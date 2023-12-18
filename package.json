@@ -1,0 +1,22 @@
+{
+    "name": "@ld/main-game",
+    "version": "1.0.0-beta.1",
+    "description": "培优交互游戏开发框架   ---",
+    "main": "",
+    "scripts": {
+        "update": "node updateGame.js",
+        "build": "node buildProject.js",
+        "release": "npm build && npm publish"
+    },
+    "files": [
+        "build/web-mobile/"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "node-uuid": "^1.4.8",
+        "simple-git": "^3.19.0",
+        "uglify-js": "^3.17.4",
+        "zip-local": "^0.3.4"
+    }
+}

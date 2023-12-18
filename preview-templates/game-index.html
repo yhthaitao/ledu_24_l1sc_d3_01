@@ -1,0 +1,137 @@
+<html>
+<head>
+  <link rel="icon" href="app/editor/static/preview-templates/favicon.ico"></link>
+  <meta charset="utf-8">
+  <title><%=title%></title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <style>
+    html,body{
+      margin: 0px;
+      padding: 0px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="GameCanvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+  <div id="splash">
+    <div class="progress-bar stripes">
+      <span style="width: 0%"></span>
+    </div>
+  </div>
+  <div id="GameDiv" style="width:640px; height: 960px;">
+    <!-- 打开相册或读取电脑本地图片  -->
+  <!-- <input id="OpenImageFile" type="file" capture="camera" accept="image/*" style="visibility: hidden"> -->
+  <input id="OpenImageFile" type="file" accept="image/*" style="visibility: hidden">
+  <!-- 打开相册或读取电脑本地音频  -->
+  <input id="OpenAudioFile" type="file" accept="audio/*" style="visibility: hidden">
+  <!-- <input id="OpenAudioFile" type="file" capture="audio" accept="audio/*" style="visibility: hidden"> -->
+</div>
+  <script src="settings.js" charset="utf-8"></script>
+  <script src="boot.js" charset="utf-8"></script>
+  <script src="/socket.io/socket.io.js" charset="utf-8"></script>
+  <script src="app/engine/bin/cocos2d-js-for-preview.js" charset="utf-8"></script>
+  <script src="preview-scripts/__quick_compile__.js" charset="utf-8"></script>
+  <!-- <script src="iframe-msg.js" charset="utf-8"></script> -->
+  <!-- <script src="ali_log.min.js" charset="utf-8"></script> -->
+  <script src="game-msg.min.js" charset="utf-8"></script>
+  <script src="dist/cos-js-sdk-v5.min.js"></script>
+  <script>
+    (function(){
+      aliLogMsg.init("100485446","12345","8683","13","test");
+    })();
+
+    (function(){
+        // 请求用到的参数
+        // var Region = 'ap-beijing';     
+        // var Bucket = 'micro-class-test-1313601664';//测试环境
+        // var url = 'https://test-class-api-online.saasp.vdyoo.com/micro-class/storage/v1/tencent/sts';//测试环境
+        // var Bucket = 'micro-clas-1313601664';
+        // var url = 'https://classroom-api-online.saasp.vdyoo.com/micro-class/storage/v1/tencent/sts';
+        var url = '', Bucket = '', Region = '';
+        var cos = new COS({
+            getAuthorization: function (options, callback) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.setRequestHeader('token', 'cocos');
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = function (e) {
+                    try {
+                        var data = JSON.parse(e.target.responseText);
+                        Bucket = data.bucketName;
+                        Region = data.endpoint;
+                    } catch (e) {
+                    }
+                    callback({
+                        TmpSecretId: data.accessKeyId,
+                        TmpSecretKey: data.accessKeySecret,
+                        SecurityToken: data.securityToken,
+                        StartTime: data.startTime,
+                        ExpiredTime: data.expireTime,
+                        ScopeLimit: true, // 设为 true 可限制密钥只在相同请求可重用，默认不限制一直可重用，细粒度控制权限需要设为 true
+                    });
+                };
+                xhr.send(JSON.stringify(options.Scope));
+            }
+        });
+        cosMsg.uploadFiles = function(files, callback) {
+            if (!url) {
+                return;
+            }
+            cos.uploadFiles({
+                files: files,
+                SliceSize: 1024 * 1024,
+                onProgress: function (info) {
+                    // var percent = parseInt(info.percent * 10000) / 100;
+                    // var speed = parseInt(info.speed / 1024 / 1024 * 100) / 100;
+                    // console.log('进度：' + percent + '%; 速度：' + speed + 'Mb/s;');
+                },
+                onFileFinish: function (err, data, options) {
+                    // console.log(options.Key + ' 上传' + (err ? '失败' : '完成'));
+                },
+            }, function (err, data) {
+                console.log(err || data);
+                callback(err, data);
+            });
+        }
+        cosMsg.setCosData = function (data){
+            url = data.url;
+            Bucket = data.bucket;
+            Region = data.region;
+        }
+        cosMsg.deleteObject = function (key,callback) {
+            cos.deleteObject({
+                Bucket: Bucket, /* 填写自己的 bucket，必须字段 */
+                Region: Region, /* 存储桶所在地域，必须字段 */
+                Key: key,       /* 存储在桶里的对象键（例如1.jpg，a/b/test.txt），必须字段 */
+            }, function(err, data) {
+                callback && callback(err, data);
+                console.log(err || data);
+            });
+        }
+        cosMsg.deleteMultipleObject = function(keys,callback) {
+            cos.deleteMultipleObject({
+                Bucket: Bucket, // Bucket 格式：test-1250000000
+                Region: Region,
+                Objects: keys
+                // [
+                //     {Key: '中文/中文.txt'},
+                //     {Key: '中文/中文.zip'},
+                // ]
+            }, function (err, data) {
+                logger.log(err || data);
+            });
+        }
+        cosMsg.getFileObject = function (Key, body) {
+            return {
+                Bucket: Bucket, // Bucket 格式：test-1250000000
+                Region: Region,
+                Key: Key,
+                Body: body
+            }
+        }
+    
+    })();
+  </script>
+</body>
+</html>

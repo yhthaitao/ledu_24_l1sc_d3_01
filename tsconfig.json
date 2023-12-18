@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        //指定使用的模块化标准
+        "module": "commonjs",
+        //指定要包含在编译中的库
+        "lib": ["es2015", "es2017", "dom"],
+        //指定编译后的 JavaScript 版本
+        "target": "es5",
+        //打开装饰器支持
+        "experimentalDecorators": true,
+        //忽略类型检查
+        "skipLibCheck": true,
+        //指定编译后的输出目录
+        "outDir": "temp/vscode-dist",
+        //强制私有的模块名称保持一致的大小写
+        "forceConsistentCasingInFileNames": true
+    },
+    //指定不进行编译的文件或目录,这里排除一些常用的目录
+    "exclude": ["node_modules", "library", "local", "temp", "build", "settings"]
+}

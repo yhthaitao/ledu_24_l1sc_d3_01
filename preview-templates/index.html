@@ -1,0 +1,138 @@
+<html>
+<head>
+    <title><%=title%></title>
+    <link rel="icon" href="app/editor/static/preview-templates/favicon.ico"></link>
+    <meta charset="utf-8">
+    <style>
+        *{
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+            padding: 0px;
+            overflow: hidden;
+        }
+        .noselect {
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Chrome/Safari/Opera */
+            -khtml-user-select: none; /* Konqueror */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently not supported by any browser */
+        }
+        .content_double{
+            display:flex;
+            position:relative;
+            width:100%;
+            height:100vh;
+        }
+        .iframeContent{
+            width: 100%;
+        }
+        .iframeWindow {
+            width:100%;
+            height:100%;
+            position: relative;
+        }
+        .dividingStyle{
+            width:100%;
+            height:5px;
+            background-color: black;
+        }
+        .full-btn{
+            display: block;
+            position: absolute;
+
+            bottom: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            border: 1px solid beige;
+            opacity: 0.2;
+        }
+        .full-btn:hover{
+            opacity: 0.6;
+        }
+        .full-btn::before{
+            content: "";
+            display: flex;
+            width: 20px;
+            height: 20px;
+            transform: translate(5px, 5px);
+            background-color: beige;
+        }
+        @media only screen and (min-aspect-ratio: 9/16){
+            .content_double{
+                display:flex;
+                flex-direction: column;
+                width:100%;
+                height:100vh;
+            }
+            .dividingStyle{
+                width:100%;
+                height:5px;
+                background-color: black;
+            }
+        }
+        @media only screen and (min-aspect-ratio: 16/9){
+            .content_double{
+                display:flex;
+                flex-direction: row;
+                width:100%;
+                height:100vh;
+            }
+            .dividingStyle{
+                width:5px;
+                height:100%;
+                background-color: black;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container noselect">
+        <div class="content_double noselect">
+            <div class="iframeWindow noselect">
+                <iframe id="teacher" class="iframeContent noselect"
+                    src="./iframe-index.html?role=teacher" frameborder="no" marginwidth="0" marginheight="0" scrolling="no" allowtransparency="yes"></iframe>
+                <div id='teacherBox' class="info-box noselect"></div>
+                <div class="full-btn" onclick="full(0);" title="全屏显示"></div>
+            </div>
+            <div class="dividingStyle noselect"></div>
+            <div class="iframeWindow noselect">
+                <iframe id="student" class="iframeContent noselect"
+                    src="./iframe-index.html" frameborder="no" marginwidth="0" marginheight="0" scrolling="no" allowtransparency="yes"></iframe>
+                <div id='studentBox' class="info-box noselect"></div>
+                <div class="full-btn" onclick="full(1);" title="全屏显示"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var iframeContent;
+        var targetIndex=-1;
+        var parentIframe;
+        function full(target){
+
+            if(target==0){
+                iframeContent= document.querySelectorAll(".iframeWindow")[1];
+            }else{
+                iframeContent= document.querySelectorAll(".iframeWindow")[0];
+            }
+            if(targetIndex==target){
+                if(target==0){
+                    document.querySelector(".content_double").insertBefore(parentIframe,iframeContent)
+                }else{
+                    document.querySelector(".content_double").insertBefore(parentIframe,document.querySelector(".dividingStyle"))
+                }
+                targetIndex=-1;
+                return;
+            }else{
+                targetIndex=target;
+            }
+            parentIframe=iframeContent
+            iframeContent.parentNode.removeChild(iframeContent);
+        }
+    </script>
+</body>
+
+</html>

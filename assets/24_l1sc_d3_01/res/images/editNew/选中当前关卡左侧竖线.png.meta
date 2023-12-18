@@ -1,0 +1,38 @@
+{
+  "ver": "2.3.7",
+  "uuid": "85c5c5f6-9ef1-453d-818e-7ad3cb29c7bd",
+  "importer": "texture",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 3,
+  "height": 48,
+  "platformSettings": {},
+  "subMetas": {
+    "选中当前关卡左侧竖线": {
+      "ver": "1.0.6",
+      "uuid": "de8f7e28-d222-48c9-a66e-dae97efdf3bb",
+      "importer": "sprite-frame",
+      "rawTextureUuid": "85c5c5f6-9ef1-453d-818e-7ad3cb29c7bd",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": 0,
+      "offsetY": 0,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 3,
+      "height": 48,
+      "rawWidth": 3,
+      "rawHeight": 48,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}

@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>接口消息测试</title>
+
+    <style>
+        * {
+            margin: 0px;
+            padding: 0px;
+            overflow: hidden;
+        }
+
+        .noselect {
+            -webkit-touch-callout: none;
+            /* iOS Safari */
+            -webkit-user-select: none;
+            /* Chrome/Safari/Opera */
+            -khtml-user-select: none;
+            /* Konqueror */
+            -moz-user-select: none;
+            /* Firefox */
+            -ms-user-select: none;
+            /* Internet Explorer/Edge */
+            user-select: none;
+            /* Non-prefixed version, currently not supported by any browser */
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            border: 0px;
+        }
+
+        .toolContainer {
+            position: fixed;
+            width: 280px;
+            left: 10px;
+            top: 10px;
+            padding: 10px;
+            border: 2px solid #4e4e6b;
+            border-radius: 8px;
+            background-color: #656565;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+        }
+
+        .container div {
+            width: 50%;
+            height: 100%;
+        }
+
+        button {
+            border: 1px solid #171717;
+            border-radius: 2px;
+            text-align: center;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: #bdbdbd;
+            font-weight: bold;
+            background-image: linear-gradient(#5a5a5a, #444);
+        }
+
+        button:active {
+            content: '';
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+            color: #09f;
+            background-image: linear-gradient(#333, #222);
+        }
+
+        .fpsContent {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            padding-left: 10px;
+        }
+
+        .fpsContent p {
+            display: flex;
+            width: 16%;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        .fpsContent input {
+            display: flex;
+            width: 20%;
+            height: 100%;
+            text-align: center;
+        }
+
+        .fpsContent button {
+            display: flex;
+            width: 75px;
+            height: 100%;
+            border-radius: 0px;
+        }
+
+        .iframeInfo {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .iframeInfo .item {
+            display: flex;
+            flex-direction: column;
+            margin-top: 5px;
+        }
+
+        .iframeInfo .item p {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: darkgrey;
+            width: 100px;
+            height: 25px;
+            border-radius: 5px 5px 0px 0px;
+        }
+
+        .iframeInfo .item input {
+            width: 100%;
+            height: 20px;
+            margin-top: 0px;
+        }
+
+        .modelContent {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-top: 5px;
+            width: 133px;
+            height: 25px;
+            border: 1px solid darkgrey;
+            border-radius: 5px 5px 5px 5px;
+        }
+
+        .modelContent_no_radius {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-top: 5px;
+            width: 133px;
+            height: 25px;
+            border: 1px solid darkgrey;
+            border-radius: 5px 5px 0px 0px;
+        }
+
+        .modelContent-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 66%;
+            height: 100%;
+            padding: 5px;
+            background-color: darkgrey;
+        }
+
+        .modelContent-input {
+            display: flex;
+            width: 20%;
+            margin-left: 9px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .offlineInput {
+            display: none;
+            width: 100%;
+            height: 20px;
+        }
+
+        .syncContent {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-top: 5px;
+            width: calc(100% - 5px);
+            height: 25px;
+            border-radius: 5px 5px 5px 5px;
+        }
+
+        .syncContent p {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: calc(53% - 5px);
+            height: 100%;
+            padding: 5px;
+            background-color: darkgrey;
+        }
+
+        .syncContent input {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding-left: 5px;
+        }
+
+        .syncContent div {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding-left: 5px;
+            background-color: #cccccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolContainer noselect" id="toolContainer">
+        <div style="display: flex; width: 100%; height: 28px">
+            <button style="width: 60px; border-radius: 5px" onclick="toReFresh()">刷新</button>
+            <!-- <button style="margin-left: 5px" disabled="value" onclick="toRecovery()">恢复当前数据</button> -->
+            <div class="fpsContent">
+                <p>FPS:</p>
+                <input id="fps" />
+                <button onclick="setInputFps()">设置FPS</button>
+            </div>
+            <button style="width: 60px;" onclick="runStop()">收题</button>
+        </div>
+        <!-- <textarea placeholder=需要恢复的数据 style="margin-left: 100px;" id="recovery"></textarea>
+        <button style="margin-left: 5px;" onclick="toRecovery(0)">恢复指定数据</button></textarea> -->
+        <div class="iframeInfo">
+            <div class="item">
+                <p>iframe地址:</p>
+                <input id="iframeUrl" disabled />
+            </div>
+            <div class="item">
+                <p>附加参数:</p>
+                <input id="iframeVal" />
+            </div>
+        </div>
+        <hr style="margin-top: 5px; margin-bottom: 5px" />
+        <div>
+            <div id="offlineContent" class="modelContent">
+                <p class="modelContent-title">离线模式:</p>
+                <input type="checkbox" id="offlineOpen" onclick="upOfflineVal();" class="modelContent-input" />
+            </div>
+            <input id="offlineInput" class="offlineInput" />
+            <div class="modelContent">
+                <p class="modelContent-title">同步模式:</p>
+                <input type="checkbox" id="syncVal" onclick="upCheckBox();" class="modelContent-input" />
+            </div>
+            <hr style="margin-top: 5px; margin-bottom: 5px" />
+            <div class="syncContent">
+                <p>RoomId:</p>
+                <input id="roomId" />
+            </div>
+            <div class="syncContent">
+                <p>角色信息:</p>
+                <div id="role"></div>
+            </div>
+        </div>
+        <hr style="margin-top: 5px; margin-bottom: 5px" name="stuBtns" />
+        <div class="syncContent" name="stuBtns">
+            <button onclick="replayGame(false)" style="width: 60px; height: 100%; border-radius: 5px">重新玩</button>
+            <hr style="margin: 5px; height: 100%; border: 0px" />
+            <button onclick="keepPlaying(false)" style="width: 60px; height: 100%; border-radius: 5px">接着玩</button>
+            <hr style="margin: 5px; height: 100%; border: 0px" />
+            <button onclick="stopAuthorization(false)"
+                style="width: 80px; height: 100%; border-radius: 5px">结束授权</button>
+        </div>
+
+        <hr style="margin-top: 5px; margin-bottom: 5px" />
+        <!-- <div>
+            <button onclick="switchGame(1, true)"
+                style="width: 60px; height: 100%; border-radius: 5px">预1
+            </button>
+            <button onclick="switchGame(2, true)"
+                style="width: 60px; height: 100%; border-radius: 5px">预2</button>
+            <button onclick="switchGame(3, true)"
+                style="width: 60px; height: 100%; border-radius: 5px">预3</button>
+            <button onclick="switchGame(4, true)"
+                style="width: 60px; height: 100%; border-radius: 5px">预4</button>
+            <button onclick="switchGame(5,true)"
+                style="width: 60px; height: 100%; border-radius: 5px">预主包子游戏</button>
+        </div>
+        <hr style="margin-top: 5px; margin-bottom: 5px" />
+        <div>
+            <button onclick="switchGame(1)"
+                style="width: 60px; height: 100%; border-radius: 5px">游1
+            </button>
+            <button onclick="switchGame(2)"
+                style="width: 60px; height: 100%; border-radius: 5px">游2</button>
+            <button onclick="switchGame(3)"
+                style="width: 60px; height: 100%; border-radius: 5px">游3</button>
+            <button onclick="switchGame(4)"
+                style="width: 60px; height: 100%; border-radius: 5px">游4</button>
+            <button onclick="switchGame(5)"
+                style="width: 60px; height: 100%; border-radius: 5px">主包子游戏</button>
+            <button onclick="pauseGame()"
+            style="width: 60px; height: 100%; border-radius: 5px">暂停游戏</button>
+        </div> -->
+
+        <hr style="margin-top: 5px; margin-bottom: 5px" />
+        <div class="syncContent">
+            <button onclick="set()" style="width: 60px; height: 100%; border-radius: 5px">设置</button>
+            <hr style="margin: 5px; height: 100%; border: 0px" />
+            <button onclick="switchToolStatus(false)" style="width: 60px; height: 100%; border-radius: 5px">
+                隐藏
+            </button>
+            <button onclick="stopEng(false)" style="width: 60px; height: 100%; border-radius: 5px">
+                暂停引擎
+            </button>
+        </div>
+    </div>
+    <button id="showTool" onclick="switchToolStatus(true)"
+        style="position: fixed; margin-top: 10px; margin-left: 10px; display: none">
+        显示
+    </button>
+
+    <div class="container">
+        <iframe id="iframe" style="width: 100%; height: 100%; border: 0px" src="./game-index.html"></iframe>
+    </div>
+    <script>
+        const config = {};
+        // const game1 = { name: '23_l1sqd1_01', id: '1078' };
+        // const game2 = { name: '23_KJM4_5', id: '1735' };
+        // const game3 = { name: '23_l1sqd1_02', id: '1297' };
+        // const game4 = { name: '23_l3sqd1_01', id: '1812' };
+        // const game5 = { name: '23_qw01', id: '1697' };
+
+        const game1 = { name: '23_KJM4_5', id: '13037' };
+        const game2 = { name: '23_l1sqd1_01', id: '1735' };
+        const game3 = { name: '23_KJM4_5', id: '13628' };
+        const game4 = { name: '23_l1sqd1_02', id: '1812' };
+        const game5 = { name: '23_KJM4_5', id: '13629' };
+
+        const gameCfg = {
+            1: game1,
+            2: game2,
+            3: game3,
+            4: game4,
+            5: game5,
+        };
+        var targetOfflineInfo = '';
+
+        function updateRole(isTeacher) {
+            config.isTeacher = isTeacher;
+            document.querySelector('#role').textContent = isTeacher ? '老师' : '学生';
+            document.getElementsByName('stuBtns').forEach(element => {
+                if (isTeacher) {
+                    element.style.display = 'none';
+                }
+            });
+        }
+
+        function switchToolStatus(status) {
+            const btn = document.querySelector('#showTool');
+            btn.style.display = status ? 'none' : 'block';
+            const container = document.querySelector('#toolContainer');
+            container.style.display = status ? 'block' : 'none';
+            localStorage.setItem('showTool', status ? '1' : '');
+        }
+
+        function stopEng() {
+            iframeDom.contentWindow.postMessage({ type: 'recv_pause_game', data: true }, '*');
+        }
+        function upCheckBox() {
+            const syncValDom = document.querySelector('#syncVal');
+            localStorage.setItem('syncVal', syncValDom.checked);
+        }
+        function setIframeUrl() {
+            const iframeUrlDom = document.querySelector('#iframeUrl');
+            const iframeValDom = document.querySelector('#iframeVal');
+            const offlineValDom = document.querySelector('#offlineInput');
+            const offlineCheckedDom = document.querySelector('#offlineOpen');
+            const syncValDom = document.querySelector('#syncVal');
+            let iframeUrl;
+            let iframeVal = iframeValDom.value || localStorage.getItem('iframeVal') || '';
+            let offlineVal = offlineValDom.value || localStorage.getItem('offlineVal') || '';
+            let offlineOpenVal = localStorage.getItem('offlineOpenVal') == 'true' ? true : false;
+            let syncVal = localStorage.getItem('syncVal') == 'true' ? true : false;
+
+            const url = new URL('./game-index.html', location.href);
+            if (config.isTeacher) {
+                url.searchParams.set('role', 'teacher');
+            } else {
+                url.searchParams.delete('role');
+            }
+            url.searchParams.set('isOffline', offlineOpenVal ? 1 : 0);
+            url.searchParams.set('isSync', syncVal ? 1 : 0);
+            url.searchParams.set('supportKeepAndRestart', 1);
+
+            iframeUrl = url.toString();
+            iframeUrlDom.value = iframeUrl;
+            iframeValDom.value = iframeVal;
+            offlineValDom.value = offlineVal;
+            offlineCheckedDom.checked = offlineOpenVal;
+            syncValDom.checked = syncVal;
+
+            localStorage.setItem('iframeVal', iframeVal);
+            localStorage.setItem('offlineVal', offlineVal);
+            localStorage.setItem('offlineOpenVal', offlineOpenVal);
+
+            config.iframeUrl = iframeUrl;
+            if (iframeVal != '') {
+                document.querySelector('#iframe').src = iframeUrl + '&' + iframeVal;
+            } else {
+                document.querySelector('#iframe').src = iframeUrl;
+            }
+
+            targetOfflineInfo = offlineVal;
+            upOfflineVal();
+        }
+        function upOfflineVal() {
+            const offlineContent = document.getElementById('offlineContent');
+            const offlineInput = document.getElementById('offlineInput');
+            const offlineElement = document.getElementById('offlineOpen');
+            if (offlineElement.checked == true) {
+                offlineInput.style.display = 'flex';
+                offlineContent.className = 'modelContent_no_radius';
+            } else {
+                offlineInput.style.display = 'none';
+                offlineContent.className = 'modelContent';
+            }
+
+            const offlineOpenVal = document.querySelector('#offlineOpen');
+            localStorage.setItem('offlineOpenVal', offlineOpenVal.checked);
+        }
+
+        function updateRoomId() {
+            const titleStr = window.parent.document.title.replace('CocosCreator | ', '');
+            const roomIdDom = document.querySelector('#roomId');
+            config.roomId = roomIdDom.value || localStorage.getItem('roomId') || titleStr;
+            localStorage.setItem('roomId', config.roomId);
+            roomIdDom.value = config.roomId;
+        }
+
+        function updateMaxFps() {
+            const fpsDom = document.querySelector('#fps');
+            const fps = fpsDom.value || '20';
+            fpsDom.value = fps;
+            config.fps = fps;
+        }
+
+        function init() {
+            const url = new URL(window.location.href);
+            updateRole(url.searchParams.get('role') === 'teacher');
+            updateRoomId();
+            updateMaxFps();
+            setIframeUrl();
+            switchToolStatus(!!localStorage.getItem('showTool'));
+        }
+
+        init();
+    </script>
+    <script>
+        function myLog(...args) {
+            console.log('[mock-server] ', ...args);
+        }
+
+        class MockServer {
+            constructor() {
+                this.onmessage = null;
+                this.initServer();
+            }
+
+            /**
+             * 添加事件监听
+             */
+            addEvents() {
+                this._socket.onopen = this.onSocketOpen.bind(this);
+                this._socket.onmessage = this.onReceiveMessage.bind(this);
+                this._socket.onclose = this.onSocketClose.bind(this);
+                this._socket.onerror = this.onSocketError.bind(this);
+            }
+
+            /**
+             * 移除事件监听
+             */
+            removeEvents() {
+                this._socket.onopen = null;
+                this._socket.onmessage = null;
+                this._socket.onclose = null;
+                this._socket.onerror = null;
+            }
+
+            /**
+             * 初始化服务区地址
+             * @param host IP
+             * @param port 端口
+             */
+            initServer() {
+                this._host = '43.138.0.163';
+                this._port = '80';
+                this.roomId = config.roomId;
+                this.connect();
+            }
+
+            /**
+             * 开始Socket连接
+             */
+            connect() {
+                this._socket = new WebSocket(`ws://${this._host}/?room=${this.roomId}`);
+                this.addEvents();
+            }
+
+            /**
+             * 发送消息到服务器
+             * @param msg unknown
+             */
+            send(data) {
+                if (this._socket.readyState !== WebSocket.OPEN) {
+                    return myLog('socket is not connected');
+                }
+                // myLog('发送消息socket', data);
+                this._socket.send(JSON.stringify(data));
+            }
+
+            async storeData(key, value) {
+                const url = this.getBaseUrl();
+                url.pathname = '/store';
+                url.searchParams.set('key', key);
+                const ret = await fetch(url.toString(), {
+                    method: 'POST',
+                    body: JSON.stringify(value),
+                });
+                return ret.text();
+            }
+
+            async getStoredDataByKey(key) {
+                const url = this.getBaseUrl();
+                url.pathname = '/getStore';
+                url.searchParams.set('key', key);
+                let ret = null;
+                try {
+                    ret = await fetch(url.toString());
+                    ret = await ret.json();
+                } catch (e) {
+                    ret = null;
+                    console.warn('getStoredDataByKey', e);
+                }
+                return ret;
+            }
+
+            async getAllStoredData() {
+                const url = this.getBaseUrl();
+                url.pathname = '/getAllStore';
+                const ret = await fetch(url.toString());
+                return ret.json();
+            }
+
+            async getLatestMsg() {
+                const ret = await fetch(`http://${this._host}:${this._port}/latest?room=${this.roomId}`);
+                return ret.text();
+            }
+
+            /**
+             * 关闭Socket连接
+             */
+            close() {
+                myLog('close');
+                if (this._socket) {
+                    this.removeEvents();
+                    this._socket.close();
+                    this._socket = null;
+                }
+            }
+
+            getBaseUrl() {
+                const url = new URL(`http://${this._host}`);
+                url.port = this._port;
+                url.searchParams.set('room', this.roomId);
+                return url;
+            }
+
+            onSocketOpen(e) {
+                // this.startHeart()
+                myLog('[ws]SocketOpen', e);
+            }
+
+            onReceiveMessage(e) {
+                // if (e.data === '--heartbeart--') return
+                // myLog('[ws]收到消息socket', e);
+                // console.log('======= e: ', e);
+                const base = JSON.parse(e.data);
+                const json = JSON.parse(base.data);
+                this.onmessage && this.onmessage(json.type, json.data);
+            }
+
+            onSocketClose(e) {
+                myLog('[ws]onClose', e);
+            }
+
+            onSocketError(e) {
+                myLog('[ws]onError', e);
+            }
+        }
+    </script>
+
+    <script>
+        const iframeDom = document.getElementById('iframe');
+        const mockServer = new MockServer();
+        var student_3s_data = null;
+        var teacher_3s_data = null;
+        var isOpenKeepPlay = false;
+        var isOriginalState = true;//初始状态并且有保存的学生心跳数据 拿学生数据恢复
+
+        const messageHandler = function (e) {
+            var msgType = e.data.type;
+            switch (msgType) {
+                case 'game_start': // window 加载完成事件 （初始化完成事件）
+                    isOriginalState = true;
+                    console.log('receive game_start ');
+                    break;
+                case 'sub_send_sync_data':
+                case 'send_sync_data':
+                    // console.log('send sync data', e);
+                    if (isOpenKeepPlay) {
+                        let data = e.data.data
+                        if (data.isHeartBreak) {
+                            if (isOriginalState && student_3s_data) {
+                                data = student_3s_data
+                                setTimeout(() => {
+                                    iframeDom.contentWindow.postMessage({ type: 'recv_is_master', data:true }, '*');
+                                }, 500);
+                            } else {
+                                student_3s_data = data
+                            }
+                            isOriginalState = false
+                        }
+                        iframeDom.contentWindow.postMessage({ type: 'recv_sync_data', data: data }, '*');
+                        break;
+                    }
+                    if (config.isTeacher || !e.data.data.isHeartBreak) {
+                        mockServer.send(e.data);
+                    }
+                    break;
+
+                case 'sub_send_sync_3s_data':
+                case 'send_sync_3s_data':
+                    // console.log('send sync 3s', e);
+                    if (config.isTeacher) {
+                        mockServer.send(e.data);
+                    }
+                    break;
+                case 'store_data':
+                    if (config.isTeacher) {
+                        let recoveryData = e.data.data;
+                        mockServer.storeData('recovery_data', recoveryData);
+                    }
+                    break;
+                case 'get_store_data':
+                    if (!config.isTeacher) {
+                        toRecovery();
+                    }
+                    break;
+                case 'sub_request_json_data':
+                case 'request_json_data':
+                    let jsonData;
+                    try {
+                        jsonData = JSON.parse(targetOfflineInfo);
+                    } catch (err) {
+                        console.warn('离线信息不完整/丢失~');
+                        jsonData = {};
+                    }
+                    iframeDom.contentWindow.postMessage({ type: 'recv_json_data', jsonData }, '*');
+                    break;
+                case 'sub_request_event_ready':
+                case 'request_event_ready':
+                    iframeDom.contentWindow.postMessage({ type: 'recv_is_master', data: config.isTeacher }, '*');
+                    iframeDom.contentWindow.postMessage({ type: 'recv_show_gamePanel', data: '' }, '*');
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        mockServer.onmessage = (type, data) => {
+            switch (type) {
+                case 'sub_send_sync_data':
+                case 'send_sync_data':
+                    teacher_3s_data = data;
+                    if (isOpenKeepPlay) {//重新玩接着玩不接受同步
+                        break;
+                    }
+                    iframeDom.contentWindow.postMessage({ type: 'recv_sync_data', data }, '*');
+                    break;
+                case 'sub_send_sync_3s_data':
+                case 'send_sync_3s_data':
+                    if (!config.isTeacher) {
+                        iframeDom.contentWindow.postMessage({ type: 'recv_sync_3s_data', data }, '*');
+                    }
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('message', messageHandler);
+
+        // const msgStr = 'restartGame';
+        // let oldErrMap = new Map();
+        // //相同的错误1秒只上报一次
+        // setInterval(function () {
+        //     oldErrMap.clear();
+        // }, 1000);
+
+        // let errSum = 0;
+        // let restartGame = false;
+
+        // //每3秒 重置错误次数 3秒内总次数超过20次通知mcc重启游戏
+        // setInterval(function () {
+        //     errSum = 0;
+        // }, 3000);
+
+        // iframeDom.contentWindow.addEventListener(
+        //     'error',
+        //     function (event) {
+        //         console.log('addEventListener---error ',event.error.stack);
+        //         errSum ++;
+        //         if (errSum > 20 && !restartGame) {
+        //             restartGame = true;
+        //             console.log('通知mcc重启游戏');
+        //             // iframeMsg.send_as_message({
+        //             //     type: msgStr, data: null
+        //             // });
+        //             // aliLogMsg.error('CoursewareErrorLogEvent', msgStr);
+        //         }
+        //         let curErr = event.error.stack;
+        //         if (oldErrMap && oldErrMap.get(curErr)) {
+        //             return;
+        //         }else{
+        //             oldErrMap.set(curErr, event.error.message);
+        //         }
+        //         // aliLogMsg.error('CoursewareErrorLogEvent', event.error.stack.split('\n'));
+        //     },
+        //     true,
+        // );
+
+        // iframeDom.contentWindow.console.error = function () {
+        //     if (typeof arguments[0] == 'object') {
+        //         var alt = {};
+        //         Object.getOwnPropertyNames(arguments[0]).forEach(function (key) {
+        //             alt[key] = this[key];
+        //         }, arguments[0]);
+        //         // aliLogMsg.error('CoursewareErrorLogEvent', alt);
+        //     } else {
+        //         // aliLogMsg.error('CoursewareErrorLogEvent', arguments[0]);
+        //         if(arguments[0] === 'This device does not support webgl'){
+        //             console.log('webgllost');
+        //             iframeMsg.send_as_message({
+        //                 type: 'webgllost', date:null
+        //             });
+        //         }
+        //     }
+        //     // consoleError && consoleError.apply(window, arguments);
+        //     console.warn.apply(window, ['console.error: ', ...arguments]);
+        // };
+
+
+        function setInputFps() {
+            updateMaxFps();
+            setFPS(config.fps);
+        }
+
+        let curInde = 0;
+        const gameList = []
+        function switchGame(gameIndex, isPreload = false) {
+            let gameData = gameCfg[gameIndex];
+            let name = gameData.name, url = gameData.name, coursewareId = gameData.id;
+            if (isPreload) {
+                this.preloadGame(name, url, coursewareId);
+                return;
+            }
+            let recv_switch_game = {
+                name: name,
+                urlList: [url],
+                params: { coursewareId: coursewareId, groupId: "123456", isSync: true, supportKeepAndRestart: true },
+            }
+            iframeDom.contentWindow.postMessage({ type: 'recv_switch_game', data: recv_switch_game }, '*');
+        }
+
+        function pauseGame(){
+            iframeDom.contentWindow.postMessage({ type: 'recv_pause_game', data: '' }, '*');
+        }
+
+        function preloadGame(name, url, coursewareId) {
+            let recv_preload_game = {
+                name: name,
+                urlList: [url],
+                params: { coursewareId: coursewareId }
+
+            }
+            iframeDom.contentWindow.postMessage({ type: 'recv_preload_game', data: recv_preload_game }, '*');
+        }
+
+
+        function replayGame() {
+            iframeDom.contentWindow.postMessage({ type: 'recv_is_master', data: true }, '*');
+            if (config.isTeacher || isOpenKeepPlay) {
+                return;
+            }
+            iframeDom.contentWindow.postMessage({ type: 'recv_restart', data: true }, '*');
+            isOpenKeepPlay = true;
+            student_3s_data = null;
+            // toReFresh();
+        }
+
+        function keepPlaying() {
+            if (config.isTeacher || isOpenKeepPlay) {
+                return;
+            }
+            iframeDom.contentWindow.postMessage({ type: 'recv_is_master', data: true }, '*');
+            student_3s_data = teacher_3s_data;
+            isOpenKeepPlay = true;
+        }
+
+        function stopAuthorization() {
+            if (config.isTeacher || !isOpenKeepPlay) {
+                return;
+            }
+            isOpenKeepPlay = false;
+            student_3s_data = null;
+            if (!teacher_3s_data) {
+                teacher_3s_data = { data: { data: null } }
+            }
+            iframeDom.contentWindow.postMessage({ type: 'recv_is_master', data: false }, '*');
+            iframeDom.contentWindow.postMessage({ type: 'recv_sync_data', data: teacher_3s_data }, '*');
+        }
+
+        function runStop() {
+            console.log("stop (收题)")
+            let data = {
+                type: "stop"
+            }
+            iframeDom.contentWindow.postMessage({ type: 'gameMsg', msg: data }, '*');
+        }
+
+        function set() {
+            init(); // 更新设置
+            location.reload(); // 刷新
+        }
+
+        async function toRecovery() {
+            const textValue = await mockServer.getStoredDataByKey('recovery_data');
+            console.log('recovery data ', textValue);
+            let msgType = 'recv_store_data';
+            let recoveryData = { type: msgType, data: textValue };
+            iframeDom.contentWindow.postMessage(recoveryData, '*');
+        }
+
+        function setFPS(fps) {
+            let msgType = 'recv_msg_frequency';
+            let recoveryData = { type: msgType, data: fps };
+            iframeDom.contentWindow.postMessage(recoveryData, '*');
+        }
+
+        function toReFresh() {
+            iframeDom.src = iframeDom.src;
+        }
+    </script>
+</body>
+
+</html>
