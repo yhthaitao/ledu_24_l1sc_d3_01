@@ -1,7 +1,7 @@
 export class ConstValue {
     /** --------------------------游戏通用配置---------------------------------- */
     public static readonly SubGameVer = "1.0.0"; //子包的版本 每次打包自增
-    public static readonly CoursewareKey = '24_l1sc_d3_01_4jdEJchDbJcGDT'; //每个课件唯一的key 工程名+14位随机字符串。（脚本创建工程时自动生成）
+    public static readonly CoursewareKey = '24_l1sc_d3_01_zbCbHE2Ds715Zy'; //每个课件唯一的key 工程名+14位随机字符串。（脚本创建工程时自动生成）
     public static readonly GameName = '原来如此_24l1sc'; //游戏名中文描述，用于数据上报  （脚本创建工程时输入）
     public static readonly Subject = 1; //学科（1理科 2语文 3英语）
     public static readonly CancelMcc2sDetection = false; //是否关闭mcc2秒检测，对于游戏全程同步频率过高的游戏，可以选择关闭

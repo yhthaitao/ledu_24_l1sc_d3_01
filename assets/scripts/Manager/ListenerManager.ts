@@ -57,6 +57,9 @@ class ListenerManagerClass {
 
     public dispatch(eventName: string, ...args: any) {
         const list = this.handle[eventName];
+        if (eventName == 'REFRESH_EDITOR_DOWNLOAD_UI') {
+            console.log('list: ', list);
+        }
         if (!list || list.length <= 0) {
             return;
         }

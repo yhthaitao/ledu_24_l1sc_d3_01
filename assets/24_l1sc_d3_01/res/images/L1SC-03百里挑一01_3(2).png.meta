@@ -1,6 +1,6 @@
 {
   "ver": "2.3.7",
-  "uuid": "4684a22f-81d7-4e91-a3be-376a6c7b4dd3",
+  "uuid": "3a21eb21-f07d-4455-bf75-c5dbd4f9f6b7",
   "importer": "texture",
   "type": "sprite",
   "wrapMode": "clamp",
@@ -8,15 +8,15 @@
   "premultiplyAlpha": false,
   "genMipmaps": false,
   "packable": true,
-  "width": 64,
-  "height": 64,
+  "width": 2048,
+  "height": 1153,
   "platformSettings": {},
   "subMetas": {
-    "右侧表格类选框": {
+    "L1SC-03百里挑一01_3(2)": {
       "ver": "1.0.6",
-      "uuid": "00bb3275-bca2-41c0-a049-b1cea695d0e3",
+      "uuid": "333ac9c1-ed4c-4213-8422-253a858d9f60",
       "importer": "sprite-frame",
-      "rawTextureUuid": "4684a22f-81d7-4e91-a3be-376a6c7b4dd3",
+      "rawTextureUuid": "3a21eb21-f07d-4455-bf75-c5dbd4f9f6b7",
       "trimType": "auto",
       "trimThreshold": 1,
       "rotated": false,
@@ -24,14 +24,14 @@
       "offsetY": 0,
       "trimX": 0,
       "trimY": 0,
-      "width": 64,
-      "height": 64,
-      "rawWidth": 64,
-      "rawHeight": 64,
-      "borderTop": 3,
-      "borderBottom": 3,
-      "borderLeft": 3,
-      "borderRight": 3,
+      "width": 2048,
+      "height": 1153,
+      "rawWidth": 2048,
+      "rawHeight": 1153,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
       "subMetas": {}
     }
   }

@@ -3,11 +3,24 @@ export const CellW = 88;
 export const CellH = 88;
 export const SpaceX = 3;
 export const SpaceY = 3;
+export const Keyboard = { space: 32, shift: 16, };
 
 /** 游戏模式： */
 export enum GameModel {
     square = 0,
     cycle = 1,
+}
+
+export enum CellState {
+    show = 0,
+    showChose = 1,
+    hide = 2,
+    hideChose = 3,
+}
+
+export interface CellData{
+    state: CellState,
+    chars: string,
 }
 
 /**
@@ -46,13 +59,13 @@ export class GameData {
     public titleAudio = "";
     public title = "";
     public gameModel = GameModel.square;
-    public squareObj = {
+    public squareObj: { isSign: boolean, row: number, col: number, isScore: boolean, score: number, allCellData: CellData[] } = {
         isSign: false,
         row: 10,// 1-10
         col: 10,// 1-10
         isScore: false,
         score: 5,// 1-100
-        cellChars: [],
+        allCellData: [],
     };
     public cycleObj = {
         cutNum: 4,// 2-10

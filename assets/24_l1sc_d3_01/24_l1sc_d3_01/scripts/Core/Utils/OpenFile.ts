@@ -73,8 +73,8 @@ class OpenFileClass {
 		img.onload = () => {
 			let width = img.naturalWidth;
 			let height = img.naturalHeight;
-			if (width > 1920 || height > 1080) {
-				UIHelp.showTip('文件尺寸不合规,宽度最大1920,高度最大1080');
+			if (width > 2048 || height > 1152) {
+				UIHelp.showTip('文件尺寸不合规,宽度最大2048,高度最大1152');
 				this.resetFile(INPUTFILEID.IMAGE);
 			} else {
 				cb && cb(file);

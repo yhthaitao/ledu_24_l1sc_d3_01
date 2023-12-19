@@ -10,7 +10,7 @@ import { ReportManager } from '../../Core/Manager/ReportManager';
 import BaseTeacherPanel_24_l1sc_d3_01 from '../../Core/UI/Panel/BaseTeacherPanel';
 import { SubUIHelp } from '../../Core/Utils/SubUIHelp';
 import { EventType } from '../../Data/EventType';
-import { CellH, CellW, EditorManager, GameData, GameModel, SpaceX, SpaceY } from '../../Manager/EditorManager';
+import { CellData, CellH, CellState, CellW, EditorManager, GameData, GameModel, Keyboard, SpaceX, SpaceY } from '../../Manager/EditorManager';
 import ConfigPanel from '../Item/ConfigPanel';
 import levelList from '../Item/levelList';
 
@@ -52,6 +52,12 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     /** 模式 */
     @property(cc.ToggleContainer)
     private r_model_toggle: cc.ToggleContainer = null;
+    /** 触摸节点 */
+    @property(cc.Node)
+    private l_bg: cc.Node = null;
+    /** 框选节点 */
+    @property(cc.Node)
+    private l_kuang: cc.Node = null;
     /** 方形设置-行列数量 */
     @property(cc.Node)
     private r_cellNum: cc.Node = null;
@@ -70,9 +76,6 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     /** 圆形设置-分数判定 */
     @property(cc.Node)
     private r_cycleScore: cc.Node = null;
-    /** 触摸节点 */
-    @property(cc.Node)
-    private l_touch: cc.Node = null;
     /** 方形节点 */
     @property(cc.Node)
     private l_shapeF: cc.Node = null;
@@ -86,22 +89,29 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     @property(cc.Node)
     private l_shapeY: cc.Node = null;
 
-
     private _btn_save: cc.Node = null;
     private _btn_view: cc.Node = null;
 
     objPool = {
         cell: { pool: new cc.NodePool(), max: 100 },
         label: { pool: new cc.NodePool(), max: 20 },
-    }
+    };
+    objTouch = {
+        isClick: false,
+        pStart: null,
+        tStart: 0,
+        shiftState: 0,
+    };
 
     onLoad() {
         super.onLoad();
         ListenerManager.on(EventType.SELECTLEVEL, this.updatePanel, this);
-        this.l_touch.on(cc.Node.EventType.TOUCH_START, this.touchStart, this);
-        this.l_touch.on(cc.Node.EventType.TOUCH_MOVE, this.touchMove, this);
-        this.l_touch.on(cc.Node.EventType.TOUCH_END, this.touchEnd, this);
-        this.l_touch.on(cc.Node.EventType.TOUCH_CANCEL, this.touchEnd, this);
+        this.l_bg.on(cc.Node.EventType.TOUCH_START, this.touchStart, this);
+        this.l_bg.on(cc.Node.EventType.TOUCH_MOVE, this.touchMove, this);
+        this.l_bg.on(cc.Node.EventType.TOUCH_END, this.touchEnd, this);
+        this.l_bg.on(cc.Node.EventType.TOUCH_CANCEL, this.touchEnd, this);
+        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
     }
 
     start() {
@@ -118,6 +128,12 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
 
     onDestroy() {
         ListenerManager.off(EventType.SELECTLEVEL, this.updatePanel, this);
+        this.l_bg.off(cc.Node.EventType.TOUCH_START);
+        this.l_bg.off(cc.Node.EventType.TOUCH_MOVE);
+        this.l_bg.off(cc.Node.EventType.TOUCH_END);
+        this.l_bg.off(cc.Node.EventType.TOUCH_CANCEL);
+        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
     }
 
     /**
@@ -131,6 +147,10 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         this.toggle_playTitle.isChecked = EditorManager.editorData.isPlayTitle;
         this.toggle_playBgm.isChecked = EditorManager.editorData.isPlayBgm;
 
+        let allCellData: CellData[] = [];
+        for (let index = 0; index < 100; index++) {
+            allCellData[index] = { state: CellState.show, chars: '' };
+        }
         let gameData: GameData[] = [
             {
                 auto_play_title: true,
@@ -143,7 +163,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                     col: 10,
                     isScore: false,
                     score: 5,
-                    cellChars: [],
+                    allCellData: allCellData,
                 },
                 cycleObj: {
                     cutNum: 4,
@@ -197,6 +217,13 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
 
     public initRight() {
         let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        // 隐藏相关选项
+        this.r_cellNum.active = false;
+        this.r_cellSet.active = false;
+        this.r_cellSign.active = false;
+        this.r_cellScore.active = false;
+        this.r_cycleSet.active = false;
+        this.r_cycleScore.active = false;
         if (data.gameModel == GameModel.square) {
             // 方形模式 分数限制
             let scoreTotal = data.squareObj.row * data.squareObj.col;
@@ -215,30 +242,26 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             toggleCellSign.getComponent(cc.Toggle).isChecked = data.squareObj.isSign;
             // 分数判定
             this.r_cellScore.active = true;
-            let toggleCellScore = this.r_cellSign.getChildByName('toggle');
+            let toggleCellScore = this.r_cellScore.getChildByName('toggle');
             toggleCellScore.getComponent(cc.Toggle).isChecked = data.squareObj.isScore;
             let editBoxCellScore = this.r_cellScore.getChildByName('editBox');
             editBoxCellScore.getComponent(cc.EditBox).string = '' + data.squareObj.score;
-            // 隐藏圆形相关选项
-            this.r_cycleSet.active = false;
-            this.r_cycleScore.active = false;
+            // 保存按钮
+            this._btn_save.active = data.squareObj.isScore;
         }
         else if (data.gameModel == GameModel.cycle) {
-            // 隐藏方形相关选项
-            this.r_cellNum.active = false;
-            this.r_cellSet.active = false;
-            this.r_cellSign.active = false;
-            this.r_cellScore.active = false;
             // 转盘分割
             this.r_cycleSet.active = true;
-            let editBoxCycleSet = this.r_cellScore.getChildByName('editBox');
+            let editBoxCycleSet = this.r_cycleSet.getChildByName('editBox');
             editBoxCycleSet.getComponent(cc.EditBox).string = '' + data.cycleObj.cutNum;
             // 分数判定
             this.r_cycleScore.active = true;
-            let toggleCycleScore = this.r_cellSign.getChildByName('toggle');
+            let toggleCycleScore = this.r_cycleScore.getChildByName('toggle');
             toggleCycleScore.getComponent(cc.Toggle).isChecked = data.cycleObj.isScore;
-            let editBoxCycleScore = this.r_cellScore.getChildByName('editBox');
+            let editBoxCycleScore = this.r_cycleScore.getChildByName('editBox');
             editBoxCycleScore.getComponent(cc.EditBox).string = '' + data.cycleObj.score;
+            // 保存按钮
+            this._btn_save.active = data.cycleObj.isScore;
         }
     }
 
@@ -260,7 +283,6 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     /** 刷新方块 */
     public initSquareCell() {
         let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        console.log('data：', data);
         let obj = data.squareObj;
         let center = this.l_shapeF.getChildByName('center');
         center.width = CellW * obj.col + SpaceX * (obj.col - 1);
@@ -268,28 +290,42 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         let layoutCenter = center.getComponent(cc.Layout);
         layoutCenter.spacingX = SpaceX;
         layoutCenter.spacingY = SpaceY;
-        center.children.forEach((item) => { item.active = false; });
+        center.children.forEach((cellItem) => { cellItem.active = false; });
         for (let i = 0; i < obj.row; i++) {
             for (let j = 0; j < obj.col; j++) {
-                let cellId = i * obj.col + j + 1;
-                console.log('i: ', i, '; j: ', j, '; id: ', cellId);
-                let cellName = '' + cellId;
-                let item = center.getChildByName(cellName);
-                if (!item) {
-                    item = this.poolGet(this.l_cellItem, this.objPool.cell);
-                    item.name = cellName;
-                    item.parent = center;
+                let index = i * obj.col + j;
+                let cellName = '' + index;
+                let cellItem = center.getChildByName(cellName);
+                if (!cellItem) {
+                    cellItem = this.poolGet(this.l_cellItem, this.objPool.cell);
+                    cellItem.name = cellName;
+                    cellItem.parent = center;
                 }
                 // 数字
-                item.active = true;
-                let editBox = item.getChildByName('editBox');
-                if (obj.cellChars.length > cellId && obj.cellChars[cellId]) {
-                    editBox.active = true;
-                    editBox.getComponent(cc.EditBox).string = obj.cellChars[cellId];
-                }
-                else {
+                cellItem.active = true;
+                let cellData = obj.allCellData[index];
+                if (cellData.state == CellState.show) {
+                    cellItem.color = cc.color(255, 255, 255);
+                    cellItem.opacity = 255;
+                    let editBox = cellItem.getChildByName('editBox');
+                    editBox.getComponent(cc.EditBox).string = cellData.chars;
                     editBox.active = false;
                 }
+                else if (cellData.state == CellState.showChose || cellData.state == CellState.hideChose) {
+                    cellItem.color = cc.color(100, 100, 100);
+                    cellItem.opacity = 150;
+                    cellItem.getChildByName('editBox').active = false;
+                    cellItem.getChildByName('label').active = false;
+                }
+                else {
+                    cellItem.color = cc.color(100, 100, 100);
+                    cellItem.opacity = 70;
+                    cellItem.getChildByName('editBox').active = false;
+                    cellItem.getChildByName('label').active = false;
+                }
+                let label = cellItem.getChildByName('label');
+                label.active = true;
+                label.getComponent(cc.Label).string = cellData.chars;
             }
         }
     }
@@ -297,20 +333,18 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     /** 刷新行列标注 */
     public initSquareSign() {
         let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        let obj = data.squareObj;
         let row = this.l_shapeF.getChildByName('row');
         let col = this.l_shapeF.getChildByName('col');
-        obj.isSign = true;
-        if (obj.isSign) {
-            let width = CellW * obj.col + SpaceX * (obj.col - 1);
-            let height = CellH * obj.row + SpaceY * (obj.row - 1);
+        if (data.squareObj.isSign) {
+            let width = CellW * data.squareObj.col + SpaceX * (data.squareObj.col - 1);
+            let height = CellH * data.squareObj.row + SpaceY * (data.squareObj.row - 1);
             row.active = true;
             row.x = -(width + CellW) * 0.5 - SpaceX;
             row.y = height * 0.5;
             row.height = height;
             row.getComponent(cc.Layout).spacingY = SpaceY;
             row.children.forEach((item) => { item.active = false; });
-            for (let index = 0; index < obj.row; index++) {
+            for (let index = 0; index < data.squareObj.row; index++) {
                 let item = row.getChildByName('' + index);
                 if (!item) {
                     item = this.poolGet(this.l_cellLabel, this.objPool.label);
@@ -327,7 +361,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             col.width = width;
             col.getComponent(cc.Layout).spacingX = SpaceX;
             col.children.forEach((item) => { item.active = false; });
-            for (let index = 0; index < obj.col; index++) {
+            for (let index = 0; index < data.squareObj.col; index++) {
                 let item = col.getChildByName('' + index);
                 if (!item) {
                     item = this.poolGet(this.l_cellLabel, this.objPool.label);
@@ -360,7 +394,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             }
             fillStart = fillDis * index;
             if (index == obj.cutNum - 1) {
-                fillRange = 360;
+                fillRange = 1;
             }
             else {
                 fillRange = fillDis * (index + 1);
@@ -369,6 +403,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             item.getComponent(cc.Sprite).fillRange = fillRange;
         }
         // 线
+        let angleDis = fillDis * 360;
         let line = this.l_shapeY.getChildByName('line');
         for (let index = 0; index < line.childrenCount; index++) {
             let item = line.getChildByName('item' + index);
@@ -376,21 +411,11 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             if (!item.active) {
                 continue;
             }
-            item.angle = -90 + fillDis * index;
+            item.angle = -90 + angleDis * index;
         }
     }
 
-    /**
-     * 获取 父节点上的当前坐标 在 目标节点上的 相对坐标
-     * @param nodeParent 父节点
-     * @param pointCur 父节点上的坐标
-     * @param nodeGoal 目标节点
-     * @returns 
-     */
-    getLocalPos(nodeParent: cc.Node, pointCur: cc.Vec3, nodeGoal: cc.Node) {
-        let pointWorld = nodeParent.convertToWorldSpaceAR(pointCur);
-        return nodeGoal.convertToNodeSpaceAR(pointWorld);
-    };
+
 
     getLevelTitle(gameType) {
         if (gameType < 4) {
@@ -443,184 +468,291 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     }
 
     private touchStart(event: cc.Event.EventTouch) {
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        if (data.gameModel != GameModel.square) {
+            return;
+        }
 
+        let center = this.l_shapeF.getChildByName('center');
+        center.children.forEach((item)=>{
+            item.getChildByName('editBox').active = false;
+        });
+        // 非shift选择
+        if (this.objTouch.shiftState != 1) {
+            // 选中取消
+            let isRefreshUI = false;
+            data.squareObj.allCellData.forEach((cellData) => {
+                if (cellData.state == CellState.showChose) {
+                    cellData.state = CellState.show;
+                    isRefreshUI = true;
+                }
+                else if (cellData.state == CellState.hideChose) {
+                    cellData.state = CellState.hide;
+                    isRefreshUI = true;
+                }
+            });
+            isRefreshUI && this.initLeft();
+        }
+
+        this.objTouch.isClick = true;
+        this.objTouch.pStart = this.l_bg.convertToNodeSpaceAR(event.getLocation());
+        // 框选判断
+        this.l_kuang.active = true;
+        this.l_kuang.x = this.objTouch.pStart.x;
+        this.l_kuang.y = this.objTouch.pStart.y;
+        this.l_kuang.width = 0;
+        this.l_kuang.height = 0;
     }
 
     private touchMove(event: cc.Event.EventTouch) {
-        // 点击位置 在touch节点内的相对坐标
-        // let pos = this.nodeTouch.convertToNodeSpaceAR(event.getLocation());
-        // if (this.cutObj.cutStart) {
-        //     this.nodeCutLine.active = true;
-        //     this.nodeCutLine.position = this.cutObj.cutStart;
-        //     this.nodeCutLine.width = MathUtils.getInstance().getDistance(this.cutObj.cutStart, cc.v3(pos.x, pos.y));
-        //     this.nodeCutLine.angle = -MathUtils.getInstance().getTwoPointsRadian2(this.cutObj.cutStart, cc.v3(pos.x, pos.y)) + 90;
-        //     return;
-        // }
-        // for (const keyA in this.cutObj.pSigns) {
-        //     if (!Object.prototype.hasOwnProperty.call(this.cutObj.pSigns, keyA)) {
-        //         continue;
-        //     }
-        //     let signsModel = this.cutObj.pSigns[keyA];
-        //     for (const keyB in signsModel) {
-        //         if (!Object.prototype.hasOwnProperty.call(signsModel, keyB)) {
-        //             continue;
-        //         }
-        //         let points = signsModel[keyB];
-        //         for (const keyC in points) {
-        //             if (!Object.prototype.hasOwnProperty.call(points, keyC)) {
-        //                 continue;
-        //             }
-        //             const point: cc.Vec3 = points[keyC];
-        //             let rect = cc.rect(point.x - this.cutObj.signW * 0.5, point.y - this.cutObj.signH * 0.5, this.cutObj.signW, this.cutObj.signH);
-        //             if (rect.contains(pos)) {
-        //                 this.cutObj.cutStart = cc.v3(pos.x, pos.y);
-        //                 this.cutObj.keyA = Number(keyA);
-        //                 this.cutObj.keyB = Number(keyB);
-        //                 this.cutObj.keyC = Number(keyC);
-        //                 return;
-        //             }
-        //         }
-        //     }
-        // }
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        if (data.gameModel != GameModel.square) {
+            return;
+        }
+        // 移动事件 打断点击
+        if (this.objTouch.isClick) {
+            if (Math.abs(event.getDeltaX()) + Math.abs(event.getDeltaY()) > 2) {
+                this.objTouch.isClick = false;
+            }
+        }
+        // 框选
+        let pFinish = this.l_bg.convertToNodeSpaceAR(event.getLocation());
+        this.l_kuang.width = pFinish.x - this.objTouch.pStart.x;
+        this.l_kuang.height = pFinish.y - this.objTouch.pStart.y;
+
+        let isRefreshUI = false;
+        let center = this.l_shapeF.getChildByName('center');
+        let pStart = this.getLocalPos(this.l_bg, this.objTouch.pStart, center);
+        let x = pStart.x;
+        let y = pStart.y;
+        let w = pFinish.x - this.objTouch.pStart.x;
+        let h = pFinish.y - this.objTouch.pStart.y;
+        if (w < 0) { x += w; w = Math.abs(w); }
+        if (h < 0) { y += h; h = Math.abs(h); }
+        data.squareObj.allCellData.forEach((cellData, index) => {
+            let item = center.getChildByName('' + index);
+            if (cc.Intersection.rectRect(cc.rect(x, y, w, h), item.getBoundingBox())) {
+                if (cellData.state == CellState.hide) {
+                    cellData.state = CellState.hideChose;
+                    isRefreshUI = true;
+                }
+                else if (cellData.state == CellState.show) {
+                    cellData.state = CellState.showChose;
+                    isRefreshUI = true;
+                }
+            }
+        });
+        isRefreshUI && this.initLeft();
     }
 
     private touchEnd(event: cc.Event.EventTouch) {
-        // this.nodeCutLine.active = false;
-        // console.log('touchEnd()');
-        // // 选中判断(触摸位移小于2，作为点击的判断)
-        // if (Math.abs(event.getLocationX() - this.cutObj.pStart.x) + Math.abs(event.getLocationY() - this.cutObj.pStart.y) < 2) {
-        //     // 点击切割块
-        //     let areaCut = this.nodeQues.getChildByName('areaCut');
-        //     let center = areaCut.getChildByName('center');
-        //     let pos = center.convertToNodeSpaceAR(event.getLocation());
-        //     for (let index = 0, length = center.childrenCount; index < length; index++) {
-        //         let cutBody = center.children[index];
-        //         if (cutBody.getBoundingBox().contains(pos)) {
-        //             this.eventBtnCutBody(cutBody);
-        //             break;
-        //         }
-        //     }
-        //     return;
-        // }
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        if (data.gameModel != GameModel.square) {
+            return;
+        }
 
-        // // 切割判断
-        // if (!this.cutObj.cutStart) {
-        //     return;
-        // }
-        // // 点击位置 在touch节点内的相对坐标
-        // let pos = this.nodeTouch.convertToNodeSpaceAR(event.getLocation());
-        // let opjPoint = this.cutObj.pSigns[this.cutObj.keyA][this.cutObj.keyB];
-        // let keyC = this.cutObj.keyC == CutPoints.start ? CutPoints.finish : CutPoints.start;
-        // let pointElse = opjPoint[keyC];
-        // let rectX = pointElse.x - this.cutObj.signW * 0.5;
-        // let rectY = pointElse.y - this.cutObj.signH * 0.5;
-        // let rect = cc.rect(rectX, rectY, this.cutObj.signW, this.cutObj.signH);
-        // let isCut = cc.Intersection.lineRect(cc.v2(this.cutObj.cutStart.x, this.cutObj.cutStart.y), pos, rect);
-        // if (!isCut) {
-        //     return;
-        // }
-        // let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        // let initX = data.waitCutBodyData.x;
-        // let initY = data.waitCutBodyData.y;
-        // let initW = data.waitCutBodyData.w;
-        // let initH = data.waitCutBodyData.h;
-        // if (data.listCutBodyData.length > 5) {
-        //     return;
-        // }
-        // let radio = 0.5;
-        // switch (this.cutObj.keyA) {
-        //     case CutModel.small:
-        //         radio = 0.125;
-        //         break;
-        //     case CutModel.mid:
-        //         radio = 0.250;
-        //         break;
-        //     case CutModel.big:
-        //         radio = 0.375;
-        //         break;
-        //     default:
-        //         break;
-        // }
-
-        // let cutBody: BodyData = {
-        //     state: BodyState.cut,
-        //     x: this.cutObj.keyB == CutDir.hor ? initX : initX - initW * 0.5 + initW * radio * 0.5,
-        //     y: this.cutObj.keyB == CutDir.ver ? initY : initY + initH * 0.5 - initH * radio * 0.5,
-        //     w: this.cutObj.keyB == CutDir.hor ? initW : initW * radio,
-        //     h: this.cutObj.keyB == CutDir.ver ? initH : initH * radio,
-        //     number: -1,
-        //     name: 'cut' + (data.listCutBodyData.length + 1),
-        // };
-        // let waitCutBody: BodyData = {
-        //     state: BodyState.start,
-        //     x: this.cutObj.keyB == CutDir.hor ? initX : initX + initW * 0.5 - initW * (1 - radio) * 0.5,
-        //     y: this.cutObj.keyB == CutDir.ver ? initY : initY - initH * 0.5 + initH * (1 - radio) * 0.5,
-        //     w: this.cutObj.keyB == CutDir.hor ? initW : initW * (1 - radio),
-        //     h: this.cutObj.keyB == CutDir.ver ? initH : initH * (1 - radio),
-        //     number: data.waitCutBodyData.number,
-        //     name: data.waitCutBodyData.name,
-        // };
-        // let listOne = {
-        //     model: this.cutObj.keyA,
-        //     dir: this.cutObj.keyB,
-        //     cutBody: cutBody,
-        //     waitCutBody: Tools.deepCopy(data.waitCutBodyData)
-        // };
-        // data.listCutBodyData.push(listOne);
-        // data.waitCutBodyData = waitCutBody;
-
-        // this.initAreaCut();
+        this.l_kuang.active = false;
+        let center = this.l_shapeF.getChildByName('center');
+        // 点击事件触发
+        if (this.objTouch.isClick) {
+            let pos = center.convertToNodeSpaceAR(event.getLocation());
+            let funcChose = () => {
+                for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
+                    let cellItem = center.getChildByName('' + index);
+                    if (cellItem && cellItem.getBoundingBox().contains(pos)) {
+                        const cellData = data.squareObj.allCellData[index];
+                        if (cellData.state == CellState.show) {
+                            cellData.state = CellState.showChose;
+                        }
+                        else if (cellData.state == CellState.showChose) {
+                            cellData.state = CellState.show;
+                        }
+                        else if (cellData.state == CellState.hide) {
+                            cellData.state = CellState.hideChose;
+                        }
+                        else if (cellData.state == CellState.hideChose) {
+                            cellData.state = CellState.hide;
+                        }
+                        this.initLeft();
+                        break;
+                    }
+                }
+            }
+            let funcInput = () => {
+                for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
+                    const cellData = data.squareObj.allCellData[index];
+                    if (cellData.state != CellState.show) {
+                        continue;
+                    }
+                    let cellItem = center.getChildByName('' + index);
+                    if (cellItem && cellItem.getBoundingBox().contains(pos)) {
+                        this.eventTouchEditbox(cellItem);
+                        break;
+                    }
+                }
+            }
+            // shift点击
+            if (this.objTouch.shiftState == 1) {
+                funcChose();
+            }
+            // 普通点击
+            else {
+                let disTime = 200;
+                let isDouble = false;
+                // 双击
+                if (this.objTouch.tStart) {
+                    let time = new Date().getTime() - this.objTouch.tStart;
+                    isDouble = time < disTime;
+                    this.objTouch.tStart = null;
+                    if (isDouble) {
+                        this.unscheduleAllCallbacks();
+                        funcInput();
+                    }
+                    else {
+                        this.scheduleOnce(funcChose, disTime * 0.001);
+                    }
+                }
+                // 单击
+                else {
+                    this.objTouch.tStart = new Date().getTime();
+                    this.scheduleOnce(()=>{
+                        this.objTouch.tStart = null;
+                        funcChose();
+                    }, disTime * 0.001);
+                }
+            }
+        }
     }
 
     /** 切割部分点击事件 */
-    eventBtnCutBody(cutBody: cc.Node) {
-        // let areaCut = this.nodeQues.getChildByName('areaCut');
-        // let center = areaCut.getChildByName('center');
-        // let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        // let list = [data.waitCutBodyData];
-        // data.listCutBodyData.forEach((bodyData) => {
-        //     list.push(bodyData.cutBody);
-        // });
-
-        // list.forEach((bodyData) => {
-        //     if (bodyData.name == cutBody.name) {
-        //         cutBody.getChildByName('select').active = true;
-        //         cutBody.getChildByName('editBox').active = true;
-        //         cutBody.getChildByName('label').active = false;
-        //     }
-        //     else {
-        //         let elseBody = center.getChildByName(bodyData.name);
-        //         if (elseBody) {
-        //             elseBody.getChildByName('select').active = false;
-        //             elseBody.getChildByName('editBox').active = false;
-        //             elseBody.getChildByName('label').active = bodyData.number > 0;
-        //         }
-        //     }
-        // });
+    eventTouchEditbox(cellItem: cc.Node) {
+        if (!cellItem) {
+            return;
+        }
+        let center = cellItem.parent;
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        let length = data.squareObj.row * data.squareObj.col;
+        for (let index = 0; index < length; index++) {
+            const item = center.getChildByName('' + index);
+            let label = item.getChildByName('label');
+            let editBox = item.getChildByName('editBox');
+            if (item.name == cellItem.name) {
+                label.active = false;
+                editBox.active = true;
+                editBox.getComponent(cc.EditBox).string = label.getComponent(cc.Label).string;
+                editBox.getComponent(cc.EditBox).focus();
+            }
+            else {
+                label.active = true;
+                editBox.active = false;
+                label.getComponent(cc.Label).string = editBox.getComponent(cc.EditBox).string;
+            }
+        }
     }
 
-    /** 删除上次的切割 */
-    eventBtnDelete(event: cc.Event.EventTouch) {
-        // let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        // if (data.listCutBodyData.length > 0) {
-        //     let listLast = data.listCutBodyData.pop();
-        //     data.waitCutBodyData = Tools.deepCopy(listLast.waitCutBody);
-        //     this.initAreaCut();
-        //     this.initAreaDrag();
-        // }
+    public onKeyDown(event: cc.Event.EventKeyboard) {
+        switch (event.keyCode) {
+            case Keyboard.space:
+                {
+                    let isRefreshUI = false;
+                    let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+                    data.squareObj.allCellData.forEach((cellData) => {
+                        if (cellData.state == CellState.showChose) {
+                            cellData.state = CellState.hide;
+                            isRefreshUI = true;
+                        }
+                        else if (cellData.state == CellState.hideChose) {
+                            cellData.state = CellState.show;
+                            isRefreshUI = true;
+                        }
+                    });
+                    isRefreshUI && this.initLeft();
+                }
+                break;
+            case Keyboard.shift:
+                this.objTouch.shiftState = 1;
+                break;
+            default:
+                break;
+        }
+    }
+
+    public onKeyUp(event: cc.Event.EventKeyboard) {
+        switch (event.keyCode) {
+            case Keyboard.shift:
+                this.objTouch.shiftState = 0;
+                break;
+            default:
+                break;
+        }
     }
 
     eventToggle(toggle: cc.Toggle, costom: string) {
         // 游戏模式选择
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
         if (costom == 'model') {
-            let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
             data.gameModel = this.r_model_toggle.toggleItems[0].isChecked ? GameModel.square : GameModel.cycle;
             this.initUI();
+        }
+        // 方形 行列标注
+        else if (costom == 'cellSign') {
+            data.squareObj.isSign = toggle.isChecked;
+            this.initSquareSign();
+        }
+        // 方形 分数判定
+        else if (costom == 'cellScore') {
+            data.squareObj.isScore = toggle.isChecked;
+            if (data.squareObj.isScore) {
+                let isShowTip = false;
+                let cellScore = toggle.node.parent;
+                let editBox = cellScore.getChildByName('editBox');
+                let chars = editBox.getComponent(cc.EditBox).string;
+                if (chars.length < 1) {
+                    isShowTip = true;
+                }
+                else {
+                    let num = Number(chars);
+                    if (num < 1 || num > 10) {
+                        isShowTip = true;
+                    }
+                }
+                if (isShowTip) {
+                    UIHelp.showTip('涂色格数不正确');
+                }
+            }
+            this.initRight();
+            this.initLeft();
+        }
+        // 圆形 分数判定
+        else if (costom == 'cycleScore') {
+            data.cycleObj.isScore = toggle.isChecked;
+            if (data.cycleObj.isScore) {
+                let isShowTip = false;
+                let cellScore = toggle.node.parent;
+                let editBox = cellScore.getChildByName('editBox');
+                let chars = editBox.getComponent(cc.EditBox).string;
+                if (chars.length < 1) {
+                    isShowTip = true;
+                }
+                else {
+                    let num = Number(chars);
+                    if (num < 1 || num > 10) {
+                        isShowTip = true;
+                    }
+                }
+                if (isShowTip) {
+                    UIHelp.showTip('涂色格数不正确');
+                }
+            }
+            this.initRight();
+            this.initLeft();
         }
     }
 
     eventEditbox(editBox: cc.EditBox, costom: string) {
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
         let chars = editBox.string;
+        // 方形 行列设置
         if (costom == 'row' || costom == 'col') {
             if (chars.length < 1) {
                 editBox.string = '1';
@@ -628,43 +760,131 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             let num = Number(editBox.string);
             if (num < 1) {
                 num = 1;
+                UIHelp.showTip('输入的行列不能小于1');
+            }
+            else if (num > 10) {
+                num = 10;
+                UIHelp.showTip('输入的行列不能超过10x10');
             }
             editBox.string = '' + num;
-            let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
             data.squareObj[costom] = num;
-            this.initUI();
+            data.squareObj.allCellData.forEach((cellData) => {
+                cellData.state = CellState.show;
+            });
+            this.initLeft();
         }
-        // let chars = editBox.string;
-        // if (chars.length < 1) {
-        //     return;
-        // }
-        // let num = Number(editBox.string);
-        // if (num < 1) {
-        //     num = 1;
-        // }
-        // if (costom == 'body') {
-        //     let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        //     let name = editBox.node.parent.name;
-        //     if (name == data.waitCutBodyData.name) {
-        //         data.waitCutBodyData.number = num;
-        //     }
-        //     else {
-        //         data.listCutBodyData.forEach((bodyData) => {
-        //             if (bodyData.cutBody.name == editBox.node.parent.name) {
-        //                 bodyData.cutBody.number = num;
-        //             }
-        //         });
-        //     }
-        //     this.initBodyCut();
-        // }
-        // else if (costom == 'digit') {
-
-        // }
-        // this.initAreaDrag();
+        // 方形 分数设置
+        else if (costom == 'cellScore') {
+            if (chars.length < 1) {
+                editBox.string = '1';
+            }
+            let num = Number(editBox.string);
+            if (num < 1) {
+                num = 1;
+            }
+            else if (num > 100) {
+                num = 100;
+                UIHelp.showTip('分数不能超过100');
+            }
+        }
+        // 方格输入
+        else if (costom == 'cellItem') {
+            console.log('char: ', chars, '; len: ', chars.length);
+            if (chars.length > 0) {
+                let type = 0;// 字符种类
+                let isNumber = false;
+                let isWordEN = false;
+                let isWordCN = false;
+                for (let index = 0; index < chars.length; index++) {
+                    const element = chars.slice(index, index + 1);
+                    if (this.isNumber(element)) {
+                        type += 1;
+                        isNumber = true;
+                    }
+                    else if (this.isWordEN(element)) {
+                        type += 1;
+                        isWordEN = true;
+                    }
+                    else if (this.isWordCN(element)) {
+                        type += 1;
+                        isWordCN = true;
+                    }
+                }
+                if (type != 1) {
+                    UIHelp.showTip('只能单独输入汉字、字母或数字');
+                    editBox.string = '';
+                    return;
+                }
+                if (isNumber) {
+                    if (chars.length > 3) {
+                        UIHelp.showTip('数字最多输入三位');
+                        chars = chars.slice(0, 3);
+                    }
+                }
+                else if (isWordEN) {
+                    if (chars.length > 1) {
+                        UIHelp.showTip('字母最多输入一位');
+                        chars = chars.slice(0, 1);
+                    }
+                }
+                else if (isWordCN) {
+                    if (chars.length > 1) {
+                        UIHelp.showTip('汉字最多输入一位');
+                        chars = chars.slice(0, 1);
+                    }
+                }
+            }
+            let cellName = editBox.node.parent.name;
+            data.squareObj.allCellData[Number(cellName)].chars = chars;
+            this.initLeft();
+        }
+        // 圆形 等分设置
+        else if (costom == 'cycleCut') {
+            if (chars.length < 1) {
+                editBox.string = '2';
+            }
+            let num = Number(editBox.string);
+            if (num < 2) {
+                num = 2;
+            }
+            else if (num > 10) {
+                num = 10;
+                UIHelp.showTip('等分数量不能超过10');
+            }
+            editBox.string = '' + num;
+            data.cycleObj.cutNum = num;
+            this.initLeft();
+        }
+        // 圆形 分数设置
+        else if (costom == 'cycleScore') {
+            if (chars.length < 1) {
+                editBox.string = '1';
+            }
+            let num = Number(editBox.string);
+            if (num < 1) {
+                num = 1;
+            }
+            else if (num > 10) {
+                num = 10;
+                UIHelp.showTip('分数不能超过10');
+            }
+        }
     }
 
     eventButton(event: cc.Event.EventTouch, costom: string) {
-
+        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        if (costom == 'fill') {
+            let length = data.squareObj.row * data.squareObj.col;
+            for (let index = 0; index < length; index++) {
+                data.squareObj.allCellData[index].chars = '' + (index + 1);
+            }
+        }
+        else if (costom == 'clear') {
+            data.squareObj.allCellData.forEach((cellData) => {
+                cellData.chars = '';
+            });
+        }
+        this.initSquareCell();
     }
 
     onTogglePlayAgin(toggle: cc.Toggle) {
@@ -699,12 +919,13 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
 
     // 保存课件按钮
     public onBtnSaveClicked() {
-        const isEdit = EditorManager.isSupportEdit();
-        if (!isEdit || ReportManager.isAllOver) {
-            SubUIHelp.showSubmissionPanel();
-        } else {
-            UIHelp.showTip('请先完成一遍题目');
-        }
+        // const isEdit = EditorManager.isSupportEdit();
+        // if (!isEdit || ReportManager.isAllOver) {
+        //     SubUIHelp.showSubmissionPanel();
+        // } else {
+        //     UIHelp.showTip('请先完成一遍题目');
+        // }
+        SubUIHelp.showSubmissionPanel();
     }
     // 预览课件按钮
     public onBtnViewClicked() {
@@ -724,6 +945,12 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         }
     }
 
+    /** 获取 父节点上的当前坐标 在 目标节点上的 相对坐标 */
+    getLocalPos(nodeParent: cc.Node, pointCur: cc.Vec3, nodeGoal: cc.Node) {
+        let pointWorld = nodeParent.convertToWorldSpaceAR(pointCur);
+        return nodeGoal.convertToNodeSpaceAR(pointWorld);
+    };
+
     /** 缓冲池 放入 */
     public poolPut(node: cc.Node, objPool: { pool: cc.NodePool, max: number }) {
         if (objPool.pool.size() <= objPool.max) {
@@ -737,4 +964,16 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     public poolGet(node: any, objPool: { pool: cc.NodePool, max: number }): cc.Node {
         return objPool.pool.size() > 0 ? objPool.pool.get() : cc.instantiate(node);
     };
+
+    public isNumber(str: string) {
+        return /^\d+(\.\d+)?$/.test(str);
+    }
+
+    public isWordEN(str: string) {
+        return /[_a-zA-Z]/.test(str);
+    }
+
+    public isWordCN(str: string) {
+        return /^[\u4e00-\u9fa5]+$/.test(str);
+    }
 }
