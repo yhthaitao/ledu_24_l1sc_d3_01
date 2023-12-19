@@ -6,6 +6,8 @@ import { ListenerManager } from '../../../../../scripts/Manager/ListenerManager'
 import { MathUtils } from '../../../../../scripts/Utils/MathUtils';
 import { Tools } from '../../../../../scripts/Utils/Tools';
 import { UIHelp } from '../../../../../scripts/Utils/UIHelp';
+import { UploadAudio_24_l1sc_d3_01 } from '../../Components/UploadAudio';
+import { UploadImg_24_l1sc_d3_01 } from '../../Components/UploadImg';
 import { ReportManager } from '../../Core/Manager/ReportManager';
 import BaseTeacherPanel_24_l1sc_d3_01 from '../../Core/UI/Panel/BaseTeacherPanel';
 import { SubUIHelp } from '../../Core/Utils/SubUIHelp';
@@ -49,15 +51,15 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     @property(ConfigPanel)
     configPanel: ConfigPanel = null;
 
+    /** 背景音乐设置 */
+    @property(cc.Node)
+    private r_music: cc.Node = null;
+    /** 背景图设置 */
+    @property(cc.Node)
+    private r_back: cc.Node = null;
     /** 模式 */
     @property(cc.ToggleContainer)
     private r_model_toggle: cc.ToggleContainer = null;
-    /** 触摸节点 */
-    @property(cc.Node)
-    private l_bg: cc.Node = null;
-    /** 框选节点 */
-    @property(cc.Node)
-    private l_kuang: cc.Node = null;
     /** 方形设置-行列数量 */
     @property(cc.Node)
     private r_cellNum: cc.Node = null;
@@ -76,6 +78,12 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     /** 圆形设置-分数判定 */
     @property(cc.Node)
     private r_cycleScore: cc.Node = null;
+    /** 触摸节点 */
+    @property(cc.Node)
+    private l_bg: cc.Node = null;
+    /** 框选节点 */
+    @property(cc.Node)
+    private l_kuang: cc.Node = null;
     /** 方形节点 */
     @property(cc.Node)
     private l_shapeF: cc.Node = null;
@@ -186,6 +194,8 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     public updatePanel() {
         let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
         this.r_model_toggle.toggleItems[data.gameModel].isChecked = true;
+        this.r_music.getChildByName('nodeUpload').getComponent(UploadAudio_24_l1sc_d3_01).refresh();
+        this.r_back.getChildByName('nodeUpload').getComponent(UploadImg_24_l1sc_d3_01).refresh();
         // 游戏初始化
         this.initUI();
     }
@@ -415,8 +425,6 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         }
     }
 
-
-
     getLevelTitle(gameType) {
         if (gameType < 4) {
             return "请把下面的图形切一刀（直线），使得切出的几部分能拼出一个正方形。";
@@ -474,7 +482,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         }
 
         let center = this.l_shapeF.getChildByName('center');
-        center.children.forEach((item)=>{
+        center.children.forEach((item) => {
             item.getChildByName('editBox').active = false;
         });
         // 非shift选择
@@ -615,7 +623,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                 // 单击
                 else {
                     this.objTouch.tStart = new Date().getTime();
-                    this.scheduleOnce(()=>{
+                    this.scheduleOnce(() => {
                         this.objTouch.tStart = null;
                         funcChose();
                     }, disTime * 0.001);
@@ -919,6 +927,9 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
 
     // 保存课件按钮
     public onBtnSaveClicked() {
+        if (!this.checkQuestion()) {
+            return;
+        }
         // const isEdit = EditorManager.isSupportEdit();
         // if (!isEdit || ReportManager.isAllOver) {
         //     SubUIHelp.showSubmissionPanel();
@@ -929,6 +940,9 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
     }
     // 预览课件按钮
     public onBtnViewClicked() {
+        if (!this.checkQuestion()) {
+            return;
+        }
         cc.audioEngine.stopAllEffects();
         EditorManager.setUpLoadFilesData(CosManager.getFilesData());
         // console.log(JSON.stringify(EditorManager.editorData.upLoadFilesData));
@@ -943,6 +957,48 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             ListenerManager.dispatch(MainMsgType.TEACHER_PANEL_LOADING, true);
             GameBundleManager.openPanel(GamePanelType.GamePanel);
         }
+    }
+
+    checkQuestion(){
+        let totalLevel = EditorManager.editorData.GameData.length;
+        for (let i = 0; i < totalLevel; i++) {
+            let data = EditorManager.editorData.GameData[i];
+            if (data.gameModel == GameModel.square) {
+                if (data.squareObj.isScore) {
+                    let totalScore = 0;
+                    for (let j = 0, length = data.squareObj.row*data.squareObj.col; j < length; j++) {
+                        if (data.squareObj.allCellData[j].state == CellState.show) {
+                            totalScore++;
+                        }
+                    }
+                    if (data.squareObj.score >= totalScore) {
+                        UIHelp.showTip('分数不能超过总数');
+                        return false;
+                    }
+                }
+                else{
+                    if (totalLevel > 1) {
+                        UIHelp.showTip('没有分数，只能有1关');
+                        return false;
+                    }
+                }
+            }
+            else if (data.gameModel == GameModel.cycle) {
+                if (data.cycleObj.isScore) {
+                    if (data.squareObj.score >= data.cycleObj.cutNum) {
+                        UIHelp.showTip('分数不能超过总数');
+                        return false;
+                    }
+                }
+                else{
+                    if (totalLevel > 1) {
+                        UIHelp.showTip('没有分数，只能有1关');
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     /** 获取 父节点上的当前坐标 在 目标节点上的 相对坐标 */

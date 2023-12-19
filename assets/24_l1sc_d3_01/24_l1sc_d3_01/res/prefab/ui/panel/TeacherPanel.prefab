@@ -16147,7 +16147,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "upload",
+    "_name": "button",
     "_objFlags": 0,
     "_parent": {
       "__id__": 432
@@ -16175,7 +16175,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 36,
+      "width": 72,
       "height": 22.68
     },
     "_anchorPoint": {
@@ -16227,8 +16227,8 @@
     ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
-    "_string": "图片",
-    "_N$string": "图片",
+    "_string": "上传图片",
+    "_N$string": "上传图片",
     "_fontSize": 18,
     "_lineHeight": 18,
     "_enableWrapText": true,
@@ -16329,7 +16329,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "node",
+    "_name": "nodeUpload",
     "_objFlags": 0,
     "_parent": {
       "__id__": 432
@@ -30445,14 +30445,14 @@
     "configPanel": {
       "__id__": 682
     },
+    "r_music": {
+      "__id__": 394
+    },
+    "r_back": {
+      "__id__": 432
+    },
     "r_model_toggle": {
       "__id__": 482
-    },
-    "l_bg": {
-      "__id__": 181
-    },
-    "l_kuang": {
-      "__id__": 322
     },
     "r_cellNum": {
       "__id__": 487
@@ -30471,6 +30471,12 @@
     },
     "r_cycleScore": {
       "__id__": 643
+    },
+    "l_bg": {
+      "__id__": 181
+    },
+    "l_kuang": {
+      "__id__": 322
     },
     "l_shapeF": {
       "__id__": 214
