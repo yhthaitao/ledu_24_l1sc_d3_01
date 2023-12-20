@@ -32,7 +32,6 @@ export class UploadAudio_24_l1sc_d3_01 extends cc.Component {
 
 
 	start() {
-		console.log('name: ', this.node.name);
 		ListenerManager.on(MainMsgType.REFRESH_EDITOR_DOWNLOAD_UI, this.refresh, this);
 	}
 

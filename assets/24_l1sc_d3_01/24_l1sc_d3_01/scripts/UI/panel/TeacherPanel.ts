@@ -154,31 +154,9 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         this.toggle_playAgin.isChecked = EditorManager.editorData.isReplay;
         this.toggle_playTitle.isChecked = EditorManager.editorData.isPlayTitle;
         this.toggle_playBgm.isChecked = EditorManager.editorData.isPlayBgm;
-        // let gameData: GameData[] = [
-        //     {
-        //         auto_play_title: false,
-        //         title: '',
-        //         titleAudio: '',
-                
-        //         gameModel: GameModel.square,
-        //         squareObj: {
-        //             isSign: false,
-        //             row: 10,
-        //             col: 10,
-        //             isScore: false,
-        //             score: 5,
-        //             allCellData: [],
-        //         },
-        //         cycleObj: {
-        //             cutNum: 4,
-        //             isScore: false,
-        //             score: 2,
-        //         },
-        //     },
-        // ];
-        // if (EditorManager.editorData.GameData.length == 0) {
-        //     EditorManager.editorData.GameData = gameData;
-        // }
+        if (EditorManager.editorData.GameData.length == 0) {
+            EditorManager.editorData.GameData = [this.createLevel(null)];
+        }
         this.levelList.node.active = true;
         this.levelList.initLevel(EditorManager.editorData.GameData, EditorManager.editorData.MaxLevel, this.createLevel.bind(this));
         this.configPanel.node.active = true;
@@ -933,10 +911,11 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         if (!this.checkQuestion()) {
             return;
         }
-        // const isEdit = EditorManager.isSupportEdit();
-        // if (!isEdit || ReportManager.isAllOver) {
-        //     SubUIHelp.showSubmissionPanel();
-        // } else {
+        const isEdit = EditorManager.isSupportEdit();
+        if (!isEdit || ReportManager.isAllOver) {
+            SubUIHelp.showSubmissionPanel();
+        }
+        // else {
         //     UIHelp.showTip('请先完成一遍题目');
         // }
         SubUIHelp.showSubmissionPanel();
@@ -970,7 +949,8 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                 if (data.squareObj.isScore) {
                     let totalScore = 0;
                     for (let j = 0, length = data.squareObj.row*data.squareObj.col; j < length; j++) {
-                        if (data.squareObj.allCellData[j].state == CellState.show) {
+                        if (data.squareObj.allCellData[j].state == CellState.show
+                            || data.squareObj.allCellData[j].state == CellState.showChose) {
                             totalScore++;
                         }
                     }

@@ -1,4 +1,5 @@
 import { MainMsgType } from '../../../../../scripts/Data/MainMsgType';
+import { CosManager } from '../../../../../scripts/Manager/CosManager';
 import { SoundManager } from '../../../../../scripts/Manager/SoundManager';
 import { MathUtils } from '../../../../../scripts/Utils/MathUtils';
 import { Tools } from '../../../../../scripts/Utils/Tools';
@@ -24,6 +25,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
     private _changeMask: cc.Node = null;
     private _levelProgress: cc.Node = null;
     private _laba: cc.Node = null;
+    private _titleString: cc.Node = null;
 
     private _gameNode: cc.Node = null;
     private _bg: cc.Node = null;
@@ -139,9 +141,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
                                     this._changeMask.active = false;
                                     this._changeSpine.active = false;
                                     UIHelp.closeMask();
-                                    if (data.auto_play_title) {
-                                        this.playTitleAudio();
-                                    }
+                                    this.playTitleAudio();
                                 });
                                 cc.tween(this._gameNode).delay(0.93).to(0.3, { y: 0 }).start();
                             }, 0);
@@ -265,7 +265,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         if (data.gameModel == GameModel.square) {
             for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
                 let cellData = data.squareObj.allCellData[index];
-                if (cellData.state == CellState.show) {
+                if (this.checkCellShow(cellData.state)) {
                     syncData.customSyncData.colorCell[index] = this.specialColorId;
                 }
             }
@@ -281,7 +281,12 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         let gameData = EditorManager.editorData.GameData;
         let syncData = SyncDataManager.syncData;
         let data = gameData[syncData.customSyncData.curLevel];
+        // 没有题干 不显示喇叭
+        this._laba.active = data.titleAudio.length > 0;
         this._laba.getComponent(cc.Animation).play("stop");
+        this._titleString.parent.active = data.title.length > 0;
+        this._titleString.getComponent(cc.Label).string = data.title;
+
         this._lb_curLevel.getComponent(cc.Label).string = (syncData.customSyncData.curLevel + 1).toString();
         this._lb_levelCount.getComponent(cc.Label).string = gameData.length.toString();
         this._bg.children.forEach((item) => {
@@ -305,21 +310,6 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
             this._btnSubmit.active = data.cycleObj.isScore;
             this.initCycleLeft();
             this.initCycleRight();
-        }
-
-        if (!syncData.frameSyncData.isGameStart) {
-            // if (syncData.frameSyncData.isGameOver) {
-            //     this.gameOver();
-            // }
-            // else {
-            //     if (data.auto_play_title && syncData.customSyncData.playTitle) {
-            //         this.playTitleAudio();
-            //     }
-            //     else {
-            //         this.scheduleOnce(this.showGuide, 0.5);
-            //     }
-            // }
-            this.scheduleOnce(this.showGuide, 0.5);
         }
     }
 
@@ -354,7 +344,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
                 // 数字
                 item.active = true;
                 let cellData = data.squareObj.allCellData[index];
-                item.opacity = cellData.state == CellState.show ? 255 : 0;
+                item.opacity = this.checkCellShow(cellData.state) ? 255 : 0;
                 if (item.opacity > 0) {
                     let brushId = syncData.customSyncData.colorCell[index];
                     let back = item.getChildByName('back');
@@ -495,7 +485,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
             let pos = center.convertToNodeSpaceAR(event.getLocation());
             for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
                 const cellData = data.squareObj.allCellData[index];
-                if (cellData.state != CellState.show) {
+                if (!this.checkCellShow(cellData.state)) {
                     continue;
                 }
                 let item = center.getChildByName('' + index);
@@ -551,7 +541,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
             }
             for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
                 const cellData = data.squareObj.allCellData[index];
-                if (cellData.state != CellState.show) {
+                if (!this.checkCellShow(cellData.state)) {
                     continue;
                 }
                 let item = center.getChildByName('' + index);
@@ -620,20 +610,32 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         SoundManager.stopAllAudio();
         let syncData = SyncDataManager.syncData;
         syncData.customSyncData.playTitle = false;
-        this.isTitlePlaying = true;
-        this._laba.getComponent(cc.Animation).play("play");
-        let audioName1 = "v_zzq_d8_010";
-        let audioName2 = "v_zzq_d8_010";
-        SoundManager.playAudio(audioName1, false, true, false, () => {
-            if (!this.isTitlePlaying) {
-                return;
+        let gameData = EditorManager.editorData.GameData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        let funcGuide = ()=>{
+            this.scheduleOnce(()=>{
+                this.stopHint();
+                this.showGuide();
+            }, 0.5);
+        }
+        if (data.auto_play_title) {
+            let fileAudio = CosManager.upLoadFileMap.get(data.titleAudio);
+            if (fileAudio && fileAudio.fileAsset) {
+                this.isTitlePlaying = true;
+                this._laba.getComponent(cc.Animation).play("play");
+                SoundManager.playAudio(fileAudio.fileAsset as cc.AudioClip, false, true, false, () => {
+                    this._laba.getComponent(cc.Animation).play("stop");
+                    this.isTitlePlaying = false;
+                    funcGuide();
+                }, true);
             }
-            SoundManager.playAudio(audioName2, false, true, false, () => {
-                this._laba.getComponent(cc.Animation).play("stop");
-                this.isTitlePlaying = false;
-                this.scheduleOnce(this.showGuide, 0.5);
-            }, true, this);
-        }, true, this);
+            else{
+                funcGuide();
+            }
+        }
+        else {
+            funcGuide();
+        }
     }
 
     /**
@@ -844,9 +846,14 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         }
     }
 
+    checkCellShow(state: CellState) {
+        return state == CellState.show || state == CellState.showChose;
+    }
+
     protected onGameStart(): void {
         super.onGameStart();
         this.initGame();
+        this.playTitleAudio();
         console.log('游戏 开始');
     }
 
@@ -897,6 +904,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         this.initData();
         this.initDataSync();
         this.initGame();
+        this.playTitleAudio();
         console.log('游戏 重玩');
     }
 
