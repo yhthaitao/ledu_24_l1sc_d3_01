@@ -1,0 +1,63 @@
+{
+    "skeleton": { "hash": "JaznAuEilldZZFmsDopg6jSzXqQ", "spine": "3.7.94", "width": 112, "height": 112 },
+    "bones": [{ "name": "root" }, { "name": "bone", "parent": "root" }],
+    "slots": [
+        { "name": "board", "bone": "bone", "attachment": "board" },
+        { "name": "1", "bone": "bone", "attachment": "1" },
+        { "name": "2", "bone": "bone", "attachment": "2" },
+        { "name": "3", "bone": "bone", "attachment": "3" }
+    ],
+    "skins": {
+        "default": {
+            "1": {
+                "1": { "x": -17, "y": -3.5, "width": 48, "height": 81 }
+            },
+            "2": {
+                "2": { "x": 16.5, "y": -1, "width": 25, "height": 46 }
+            },
+            "3": {
+                "3": { "x": 21.5, "y": -2.5, "width": 37, "height": 71 }
+            },
+            "board": {
+                "board": { "width": 112, "height": 112 }
+            }
+        }
+    },
+    "animations": {
+        "idle": {
+            "slots": {
+                "2": {
+                    "color": [
+                        {
+                            "time": 0,
+                            "color": "ffffffff",
+                            "curve": [0.25, 0, 0.75, 1]
+                        },
+                        {
+                            "time": 0.1667,
+                            "color": "ffffff00",
+                            "curve": [0.25, 0, 0.75, 1]
+                        },
+                        { "time": 0.3333, "color": "ffffffff" }
+                    ]
+                },
+                "3": {
+                    "color": [
+                        {
+                            "time": 0,
+                            "color": "ffffffff",
+                            "curve": [0.25, 0, 0.75, 1]
+                        },
+                        { "time": 0.1667, "color": "ffffff00", "curve": "stepped" },
+                        {
+                            "time": 0.3333,
+                            "color": "ffffff00",
+                            "curve": [0.25, 0, 0.75, 1]
+                        },
+                        { "time": 0.5, "color": "ffffffff" }
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -154,42 +154,51 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         this.toggle_playAgin.isChecked = EditorManager.editorData.isReplay;
         this.toggle_playTitle.isChecked = EditorManager.editorData.isPlayTitle;
         this.toggle_playBgm.isChecked = EditorManager.editorData.isPlayBgm;
-
-        let allCellData: CellData[] = [];
-        for (let index = 0; index < 100; index++) {
-            allCellData[index] = { state: CellState.show, chars: '' };
-        }
-        let gameData: GameData[] = [
-            {
-                auto_play_title: true,
-                titleAudio: '',
-                title: '',
-                gameModel: GameModel.square,
-                squareObj: {
-                    isSign: false,
-                    row: 10,
-                    col: 10,
-                    isScore: false,
-                    score: 5,
-                    allCellData: allCellData,
-                },
-                cycleObj: {
-                    cutNum: 4,
-                    isScore: false,
-                    score: 2,
-                },
-            },
-        ];
-        if (EditorManager.editorData.GameData.length == 0) {
-            EditorManager.editorData.GameData = gameData;
-        }
+        // let gameData: GameData[] = [
+        //     {
+        //         auto_play_title: false,
+        //         title: '',
+        //         titleAudio: '',
+                
+        //         gameModel: GameModel.square,
+        //         squareObj: {
+        //             isSign: false,
+        //             row: 10,
+        //             col: 10,
+        //             isScore: false,
+        //             score: 5,
+        //             allCellData: [],
+        //         },
+        //         cycleObj: {
+        //             cutNum: 4,
+        //             isScore: false,
+        //             score: 2,
+        //         },
+        //     },
+        // ];
+        // if (EditorManager.editorData.GameData.length == 0) {
+        //     EditorManager.editorData.GameData = gameData;
+        // }
         this.levelList.node.active = true;
         this.levelList.initLevel(EditorManager.editorData.GameData, EditorManager.editorData.MaxLevel, this.createLevel.bind(this));
         this.configPanel.node.active = true;
         this.configPanel.updateConfigPanel();
         this.updatePanel();
     }
-    public createLevel(_level) { }
+    public createLevel(_level) {
+        let level = new GameData();
+        if (_level) {
+            level = JSON.parse(JSON.stringify(_level));
+        }
+        else{
+            let allCellData: CellData[] = [];
+            for (let index = 0; index < 100; index++) {
+                allCellData[index] = { state: CellState.show, chars: '' };
+            }
+            level.squareObj.allCellData = allCellData;
+        }
+        return level;
+    }
 
     public updatePanel() {
         let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
@@ -300,40 +309,42 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         let layoutCenter = center.getComponent(cc.Layout);
         layoutCenter.spacingX = SpaceX;
         layoutCenter.spacingY = SpaceY;
-        center.children.forEach((cellItem) => { cellItem.active = false; });
+        center.children.forEach((item) => { item.active = false; });
         for (let i = 0; i < obj.row; i++) {
             for (let j = 0; j < obj.col; j++) {
                 let index = i * obj.col + j;
                 let cellName = '' + index;
-                let cellItem = center.getChildByName(cellName);
-                if (!cellItem) {
-                    cellItem = this.poolGet(this.l_cellItem, this.objPool.cell);
-                    cellItem.name = cellName;
-                    cellItem.parent = center;
+                let item = center.getChildByName(cellName);
+                if (!item) {
+                    item = this.poolGet(this.l_cellItem, this.objPool.cell);
+                    item.name = cellName;
+                    item.width = CellW;
+                    item.height = CellH;
+                    item.parent = center;
                 }
                 // 数字
-                cellItem.active = true;
+                item.active = true;
                 let cellData = obj.allCellData[index];
                 if (cellData.state == CellState.show) {
-                    cellItem.color = cc.color(255, 255, 255);
-                    cellItem.opacity = 255;
-                    let editBox = cellItem.getChildByName('editBox');
+                    item.color = cc.color(255, 255, 255);
+                    item.opacity = 255;
+                    let editBox = item.getChildByName('editBox');
                     editBox.getComponent(cc.EditBox).string = cellData.chars;
                     editBox.active = false;
                 }
                 else if (cellData.state == CellState.showChose || cellData.state == CellState.hideChose) {
-                    cellItem.color = cc.color(100, 100, 100);
-                    cellItem.opacity = 150;
-                    cellItem.getChildByName('editBox').active = false;
-                    cellItem.getChildByName('label').active = false;
+                    item.color = cc.color(100, 100, 100);
+                    item.opacity = 150;
+                    item.getChildByName('editBox').active = false;
+                    item.getChildByName('label').active = false;
                 }
                 else {
-                    cellItem.color = cc.color(100, 100, 100);
-                    cellItem.opacity = 70;
-                    cellItem.getChildByName('editBox').active = false;
-                    cellItem.getChildByName('label').active = false;
+                    item.color = cc.color(100, 100, 100);
+                    item.opacity = 70;
+                    item.getChildByName('editBox').active = false;
+                    item.getChildByName('label').active = false;
                 }
-                let label = cellItem.getChildByName('label');
+                let label = item.getChildByName('label');
                 label.active = true;
                 label.getComponent(cc.Label).string = cellData.chars;
             }
@@ -350,7 +361,7 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             let height = CellH * data.squareObj.row + SpaceY * (data.squareObj.row - 1);
             row.active = true;
             row.x = -(width + CellW) * 0.5 - SpaceX;
-            row.y = height * 0.5;
+            row.y = -height * 0.5;
             row.height = height;
             row.getComponent(cc.Layout).spacingY = SpaceY;
             row.children.forEach((item) => { item.active = false; });
@@ -359,6 +370,8 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                 if (!item) {
                     item = this.poolGet(this.l_cellLabel, this.objPool.label);
                     item.name = '' + index;
+                    item.width = CellW;
+                    item.height = CellH;
                     item.parent = row;
                 }
                 item.active = true;
@@ -393,7 +406,6 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
         let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
         let obj = data.cycleObj;
         let fillStart = 0;
-        let fillRange = 0;
         let fillDis = Math.round(1000 / obj.cutNum) / 1000;
         let cycle = this.l_shapeY.getChildByName('cycle');
         for (let index = 0; index < cycle.childrenCount; index++) {
@@ -403,14 +415,8 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                 continue;
             }
             fillStart = fillDis * index;
-            if (index == obj.cutNum - 1) {
-                fillRange = 1;
-            }
-            else {
-                fillRange = fillDis * (index + 1);
-            }
             item.getComponent(cc.Sprite).fillStart = fillStart;
-            item.getComponent(cc.Sprite).fillRange = fillRange;
+            item.getComponent(cc.Sprite).fillRange = fillDis;
         }
         // 线
         let angleDis = fillDis * 360;
@@ -611,22 +617,19 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                 if (this.objTouch.tStart) {
                     let time = new Date().getTime() - this.objTouch.tStart;
                     isDouble = time < disTime;
-                    this.objTouch.tStart = null;
+                    this.objTouch.tStart = new Date().getTime();
                     if (isDouble) {
                         this.unscheduleAllCallbacks();
                         funcInput();
                     }
                     else {
-                        this.scheduleOnce(funcChose, disTime * 0.001);
+                        funcChose();
                     }
                 }
                 // 单击
                 else {
                     this.objTouch.tStart = new Date().getTime();
-                    this.scheduleOnce(() => {
-                        this.objTouch.tStart = null;
-                        funcChose();
-                    }, disTime * 0.001);
+                    funcChose();
                 }
             }
         }
@@ -972,13 +975,13 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
                         }
                     }
                     if (data.squareObj.score >= totalScore) {
-                        UIHelp.showTip('分数不能超过总数');
+                        UIHelp.showTip('分数设置不能超过总分数');
                         return false;
                     }
                 }
                 else{
                     if (totalLevel > 1) {
-                        UIHelp.showTip('没有分数，只能有1关');
+                        UIHelp.showTip('演示模式只能设定1关');
                         return false;
                     }
                 }
@@ -986,13 +989,13 @@ export default class TeacherPanel_24_l1sc_d3_01 extends BaseTeacherPanel_24_l1sc
             else if (data.gameModel == GameModel.cycle) {
                 if (data.cycleObj.isScore) {
                     if (data.squareObj.score >= data.cycleObj.cutNum) {
-                        UIHelp.showTip('分数不能超过总数');
+                        UIHelp.showTip('分数设置不能超过总分数');
                         return false;
                     }
                 }
                 else{
                     if (totalLevel > 1) {
-                        UIHelp.showTip('没有分数，只能有1关');
+                        UIHelp.showTip('演示模式只能设定1关');
                         return false;
                     }
                 }

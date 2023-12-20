@@ -1,6 +1,6 @@
 /**编辑器数据类 */
-export const CellW = 88;
-export const CellH = 88;
+export const CellW = 83;
+export const CellH = 83;
 export const SpaceX = 3;
 export const SpaceY = 3;
 export const Keyboard = { space: 32, shift: 16, };
@@ -56,8 +56,9 @@ class EditorData {
 
 export class GameData {
     public auto_play_title: boolean = false;
-    public titleAudio = "";
+    public gameType = 0;
     public title = "";
+    public titleAudio = "";
     public gameModel = GameModel.square;
     public squareObj: { isSign: boolean, row: number, col: number, isScore: boolean, score: number, allCellData: CellData[] } = {
         isSign: false,

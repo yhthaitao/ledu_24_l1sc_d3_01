@@ -46,13 +46,13 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
 
     private isItemMove: boolean = false;
 
-    private operationObj = ["新建关卡","删除关卡","批量删除"];
+    private operationObj = ["新建关卡", "复制关卡", "删除关卡", "批量删除"];
     private MaxLevel: number = 10;
 
     private LevelData = [];
 
     private deleteList = [];
-    private state:number = 0;
+    private state: number = 0;
 
     private creatorLevel: Function = null;
     onLoad() {
@@ -154,22 +154,22 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
         this.updateView();
         this.setLevelList(this.LevelData, this.MaxLevel);
         let stateNode = this.deleteNode.getChildByName("state");
-        this.addBtnEvent(stateNode.getChildByName("brack"),"onBrack");
-        this.addBtnEvent(stateNode.getChildByName("delete"),"onDeleteList");
+        this.addBtnEvent(stateNode.getChildByName("brack"), "onBrack");
+        this.addBtnEvent(stateNode.getChildByName("delete"), "onDeleteList");
     }
 
-    private onBrack(){
+    private onBrack() {
         this.state = 0;
         this.deleteList = [];
         this.updateView();
     }
 
-    private onDeleteList(){
+    private onDeleteList() {
         // this.state = 0;
         // this.deleteList = [];
-        if(this.LevelData.length - this.deleteList.length < 1){
+        if (this.LevelData.length - this.deleteList.length < 1) {
             UIHelp.showTip("至少要保留1关，无法删除关卡")
-        }else{
+        } else {
             SubUIHelp.showAffirmTip(0, "删除后，关卡所有信息将被清空", function (type: number) {
                 if (type == 1) {
                     this.deleteListLevel();
@@ -178,18 +178,18 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
         }
     }
 
-    private deleteListLevel(){
-        if(this.deleteList.length <= 0){
+    private deleteListLevel() {
+        if (this.deleteList.length <= 0) {
             this.state = 0;
             // this.deleteList = [];
             this.updateView();
-        }else{
+        } else {
             let deleteIndex = this.LevelData.indexOf(this.deleteList[0]);
-            this.deleteList.splice(0,1);
+            this.deleteList.splice(0, 1);
             this.DeleteLevel(deleteIndex);
             this.deleteListLevel();
         }
-        
+
     }
 
     ////列表鼠标点击
@@ -249,14 +249,14 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
                 this.updateView();
                 ListenerManager.dispatch(EventType.SELECTLEVEL);
                 break
-            case 4:
+            case 2:
                 this.addLevel(data[this.operationIndex - 1]);
                 this.exchangeLevel(data.length - 1, this.operationIndex);
                 EditorManager.editorData.curLevel = this.operationIndex;
                 this.updateView();
                 ListenerManager.dispatch(EventType.SELECTLEVEL);
                 break
-            case 2:
+            case 3:
                 if (data.length > 1) {
                     SubUIHelp.showAffirmTip(0, "删除后，关卡所有信息将被清空", function (type: number) {
                         if (type == 1) {
@@ -269,7 +269,7 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
 
 
                 break
-            case 3:
+            case 4:
                 this.state = 1;
                 this.deleteList = [];
                 for (let index = 0; index < this.LevelData.length; index++) {
@@ -279,8 +279,6 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
                 this.updateView();
                 break
         }
-
-
     }
 
     private touchStart(event) {
@@ -340,7 +338,7 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
     }
 
     private touchMove(event) {
-        
+
         let pos = event.getDelta();
         this.isMove = true;
         let tiem = new Date().getTime()
@@ -433,20 +431,20 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
             for (let i = 0; i < this.btnList.length; i++) {
                 let node = this.btnList[i];
                 if (node["index"] == index - 1) {
-                    if(this.state == 0){
+                    if (this.state == 0) {
                         this.onTouchNode({ target: node });
-                    }else{
+                    } else {
                         // this.onTouchNode({ target: node });
                         console.log(node["index"]);
                         let deleteIndex = this.deleteList.indexOf(this.LevelData[node["index"]]);
-                        if(deleteIndex == -1){
+                        if (deleteIndex == -1) {
                             this.deleteList.push(this.LevelData[node["index"]]);
-                        } else{
-                            this.deleteList.splice(deleteIndex,1);
+                        } else {
+                            this.deleteList.splice(deleteIndex, 1);
                         }
                         this.updateLevel();
                     }
-                    
+
                     break;
                 }
             }
@@ -573,7 +571,7 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
     }
 
     public onTouchAddNode() {
-        if(this.state == 1){
+        if (this.state == 1) {
             return;
         }
         this.addLevel();
@@ -669,11 +667,11 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
         this.center.addChild(this.AddBtn);
     }
 
-    private updateLevel(){
+    private updateLevel() {
         for (let i = 0; i < this.btnList.length; i++) {
             let node = this.btnList[i];
             node.getChildByName("deleteState").active = this.state == 1;
-            node.getChildByName("deleteState").getComponent(cc.Toggle).isChecked = this.deleteList.indexOf(this.LevelData[node["index"]])!=-1;
+            node.getChildByName("deleteState").getComponent(cc.Toggle).isChecked = this.deleteList.indexOf(this.LevelData[node["index"]]) != -1;
         }
     }
     /// 设置界面显示
@@ -686,7 +684,7 @@ export default class levelList_24_l1sc_d3_01 extends cc.Component {
             node["index"] = i;
             node.y = (i * node.height + node.height / 2) * -1;
             node.getChildByName("deleteState").active = this.state == 1;
-            node.getChildByName("deleteState").getComponent(cc.Toggle).isChecked = this.deleteList.indexOf(this.LevelData[i])!=-1;
+            node.getChildByName("deleteState").getComponent(cc.Toggle).isChecked = this.deleteList.indexOf(this.LevelData[i]) != -1;
             this.setBtn(node);
         }
         this.AddBtn.y = (levelList.length * this.AddBtn.height + this.AddBtn.height / 2) * -1;

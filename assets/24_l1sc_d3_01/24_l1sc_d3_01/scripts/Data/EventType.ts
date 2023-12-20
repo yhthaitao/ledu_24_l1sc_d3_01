@@ -8,4 +8,7 @@ export enum EventType {
     UPDATEVIEW = 'UPDATEVIEW',
     SELECTQUESTION = 'SELECTQUESTION',
     SELECTLEVEL = 'SELECTLEVEL',
+
+    event_touch_click = 'event_touch_click',
+    event_touch_start = 'event_touch_start',
 }

@@ -3,36 +3,55 @@ import { SoundManager } from '../../../../../scripts/Manager/SoundManager';
 import { MathUtils } from '../../../../../scripts/Utils/MathUtils';
 import { Tools } from '../../../../../scripts/Utils/Tools';
 import { UIHelp } from '../../../../../scripts/Utils/UIHelp';
+import cutPicture_24_l1sc_d3_01 from '../../Components/cutPicture';
 import { SyncDataManager, SyncData } from '../../Core/Manager/SyncDataManager';
 import { T2M } from '../../Core/SDK/T2M';
 import BaseGamePanel_24_l1sc_d3_01 from '../../Core/UI/Panel/BaseGamePanel';
+import { EventType } from '../../Data/EventType';
 import { CellH, CellState, CellW, EditorManager, GameModel, SpaceX, SpaceY } from '../../Manager/EditorManager';
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01 {
+    @property(cutPicture_24_l1sc_d3_01)
+    private Capture: cutPicture_24_l1sc_d3_01 = null;
+
     public static className = 'GamePanel_24_l1sc_d3_01';
 
-    private _gameNode: cc.Node = null;
+    private _changeSprite: cc.Node = null;//切换关卡截图
+    private _changeSpine: cc.Node = null;
+    private _changeMask: cc.Node = null;
+    private _levelProgress: cc.Node = null;
     private _laba: cc.Node = null;
+
+    private _gameNode: cc.Node = null;
+    private _bg: cc.Node = null;
+    private _btnSubmit: cc.Node = null;
     private _shapeF: cc.Node = null;
     private _shapeY: cc.Node = null;
     private _cellItem: cc.Node = null;
     private _cellLabel: cc.Node = null;
-    private _kuang: cc.Node = null;
-    private _levelProgress: cc.Node = null;
     private _lb_curLevel: cc.Node = null;
     private _lb_levelCount: cc.Node = null;
 
+    initColorId = 0;
+    specialColorId = 4;
+    brushColors: { back: cc.Color, label: cc.Color }[] = [
+        { back: cc.color(255, 138, 209), label: cc.color(254, 255, 231) },
+        { back: cc.color(141, 213, 79), label: cc.color(254, 255, 231) },
+        { back: cc.color(38, 193, 252), label: cc.color(254, 255, 231) },
+        { back: cc.color(191, 143, 253), label: cc.color(254, 255, 231) },
+        { back: cc.color(254, 255, 231), label: cc.color(255, 204, 148) },
+    ];
     objPool = {
         cell: { pool: new cc.NodePool(), max: 100 },
         label: { pool: new cc.NodePool(), max: 20 },
     };
     objTouch = {
-        isClick: false,
-        pStart: null,
+        touchId: -1,
     };
+    isTitlePlaying = false;
 
     start() {
         super.start();
@@ -51,101 +70,173 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         // TODO 业务逻辑
         this.addListener();
         this.initData();
+        this.initDataSync();
         this.initGame();
     }
 
     public addListener() {
-        T2M.addSyncEventListener(MainMsgType.ON_TOUCH_CLICK, (data: any) => {
-            let levelData = EditorManager.editorData.GameData[SyncDataManager.syncData.customSyncData.curLevel];
-            if (data.type == 'cut') {
-                // UIHelp.showMask();
-                // let msg: { model: number, dir: number } = data.msg;
-                // SoundManager.playEffect('click_again', false);
-                // let strQues = stepData.model + '' + stepData.dir;
-                // let strAnswer = msg.model + '' + msg.dir;
-                // if (strQues == strAnswer) {
-                //     SyncDataManager.syncData.customSyncData.curStep++;
-                //     this.answerRight(true);
-                //     SoundManager.playEffect('star', false);
-                //     this.initAreaCut();
-                //     this.initAreaDrag();
-                //     if (SyncDataManager.syncData.customSyncData.curStep > totalCut - 1) {
-                //         this._touch.off(cc.Node.EventType.TOUCH_START);
-                //         this._touch.off(cc.Node.EventType.TOUCH_MOVE);
-                //         this._touch.off(cc.Node.EventType.TOUCH_END);
-                //         this._touch.off(cc.Node.EventType.TOUCH_CANCEL);
+        this._gameNode.on(cc.Node.EventType.TOUCH_START, this.touchStart, this);
+        this._gameNode.on(cc.Node.EventType.TOUCH_MOVE, this.touchMove, this);
+        this._gameNode.on(cc.Node.EventType.TOUCH_END, this.touchEnd, this);
+        this._gameNode.on(cc.Node.EventType.TOUCH_CANCEL, this.touchEnd, this);
 
-                //         let areaCut = this._ques.getChildByName('areaCut');
-                //         cc.tween(areaCut).to(0.383, { x: -300 }).start();
-                //         let areaDrag = this._ques.getChildByName('areaDrag');
-                //         areaDrag.active = true;
-                //         areaDrag.opacity = 0;
-                //         cc.tween(areaDrag).to(0.383, { opacity: 255 }).call(()=>{
-                //             UIHelp.closeMask();
-                //         }).start();
-                //     }
-                //     else{
-                //         UIHelp.closeMask();
-                //     }
-                // } else {
-                //     SoundManager.playEffect('wrong', false);
-                //     this.answerWrong(false);
-                //     UIHelp.closeMask();
-                // }
+        T2M.addSyncEventListener(EventType.event_touch_click, (msg: any) => {
+            let gameData = EditorManager.editorData.GameData;
+            let syncData = SyncDataManager.syncData;
+            let data = gameData[syncData.customSyncData.curLevel];
+
+            this.stopHint();
+            this.stopGuide();
+
+            let info: { custom: string, brushId?: number } = msg;
+            if (info.custom == 'brush') {
+                SoundManager.playEffect("click", false);
+                syncData.customSyncData.brushId = info.brushId;
+                if (data.gameModel == GameModel.square) {
+                    this.initSquareRight();
+                }
+                else if (data.gameModel == GameModel.cycle) {
+                    this.initCycleRight();
+                }
             }
-            else if (data.type == 'drag') {
-                // UIHelp.showMask();
-                // let msg: { dragIndex: number, cutBodyIndex: number } = data.msg;
-                // SoundManager.playEffect('click_again', false);
-                // if (msg.cutBodyIndex < 0) {
-                //     SoundManager.playEffect('wrong', false);
-                //     this.answerWrong(false);
-                //     let areaDrag = this._ques.getChildByName('areaDrag');
-                //     let layout = areaDrag.getChildByName('layout');
-                //     let dragItem = layout.getChildByName('item' + msg.dragIndex);
-                //     if (dragItem) {
-                //         let sp = dragItem.getChildByName('sp');
-                //         cc.tween(sp)
-                //             .to(0.15, { angle: -5 }).to(0.15, { angle: 5 })
-                //             .to(0.15, { angle: -5 }).to(0.15, { angle: 0 })
-                //             .to(0.383, { position: cc.v3(0, 0) }).call(() => {
-                //                 dragItem.zIndex = 0;
-                //                 UIHelp.closeMask();
-                //             }).start();
-                //     }
-                // }
-                // else {
-                //     this.answerRight(true);
-                //     SoundManager.playEffect('star', false);
-                //     SyncDataManager.syncData.customSyncData.curStep++;
-                //     SyncDataManager.syncData.customSyncData.arrDrag[msg.dragIndex] = 'cut' + msg.cutBodyIndex;
-                //     this.initAreaDrag();
-                //     if (SyncDataManager.syncData.customSyncData.curStep > totalCut * 2 - 1) {
-                //         SyncDataManager.syncData.customSyncData.curStep = 0;
-                //         SyncDataManager.syncData.customSyncData.curLevel += 1;
-                //         if (SyncDataManager.syncData.customSyncData.curLevel < EditorManager.editorData.GameData.length) {
-                //             this.initData();
-                //             this.initGame();
-                //             UIHelp.closeMask();
-                //         }
-                //         else {
-                //             SyncDataManager.syncData.frameSyncData.isGameOver = true;
-                //             this.scheduleOnce(this.gameOver, 1.0);
-                //         }
-                //     }
-                //     else{
-                //         UIHelp.closeMask();
-                //     }
-                // }
+            else if (info.custom == 'submit') {
+                SoundManager.stopAllAudio();
+                SoundManager.stopAllEffect();
+                let result = this.getQuesResult();
+                if (result.ques == result.answer) {
+                    SoundManager.playEffect("star", false);
+                    UIHelp.showMask();
+                    if (syncData.customSyncData.curLevel < gameData.length - 1) {
+                        syncData.customSyncData.curLevel++;
+                        syncData.customSyncData.time = 10;
+                        syncData.customSyncData.playTitle = true;
+                        this.isTitlePlaying = false;
+                        this.answerRight(true);
+                    }
+                    else {
+                        syncData.frameSyncData.isGameOver = true;
+                        this.answerRight(true);
+                    }
+                    this.scheduleOnce(() => {
+                        if (syncData.frameSyncData.isGameOver) {
+                            this.gameOver();
+                        }
+                        else {
+                            SoundManager.stopAudioTitle();
+                            this._changeSprite.active = true;
+                            this._changeSprite.getComponent(cc.Sprite).spriteFrame = this.Capture.CapturePicture();
+                            this.scheduleOnce(() => {
+                                this.initDataSync();
+                                this.initGame();
+                                this._gameNode.y = 1152;
+                                this._changeMask.active = true;
+                                this._changeMask.opacity = 100;
+                                this._changeSpine.active = true;
+                                SoundManager.playEffect("nextLevel", false);
+                                cc.tween(this._changeMask).delay(1).to(0.5, { opacity: 0 }).start();
+                                Tools.playSpine(this._changeSpine.getComponent(sp.Skeleton), "animation", false, () => {
+                                    this._changeMask.stopAllActions();
+                                    this._changeMask.active = false;
+                                    this._changeSpine.active = false;
+                                    UIHelp.closeMask();
+                                    if (data.auto_play_title) {
+                                        this.playTitleAudio();
+                                    }
+                                });
+                                cc.tween(this._gameNode).delay(0.93).to(0.3, { y: 0 }).start();
+                            }, 0);
+                        }
+                    }, 1);
+                }
+                else {
+                    this.answerWrong(false);
+                    SoundManager.playEffect("wrong", false);
+                    UIHelp.showMask();
+                    if (data.gameModel == GameModel.square) {
+                        let left = this._shapeF.getChildByName('left');
+                        let center = left.getChildByName('center');
+                        syncData.customSyncData.colorCell.forEach((value, index) => {
+                            if (value != this.specialColorId) {
+                                let item = center.getChildByName('' + index);
+                                let tip = item.getChildByName('tip');
+                                tip.active = true;
+                                tip.color = cc.color(255, 0, 0);
+                                tip.getComponent(cc.Animation).stop();
+                                tip.getComponent(cc.Animation).play();
+                            }
+                        });
+                        this.scheduleOnce(() => {
+                            syncData.customSyncData.colorCell.forEach((value, index) => {
+                                if (value != this.specialColorId) {
+                                    let item = center.getChildByName('' + index);
+                                    item.getChildByName('tip').active = false;
+                                }
+                            });
+                            UIHelp.closeMask();
+                        }, 1.0);
+                    }
+                    else if (data.gameModel == GameModel.cycle) {
+                        let left = this._shapeY.getChildByName('left');
+                        let center = left.getChildByName('center');
+                        syncData.customSyncData.colorCell.forEach((value, index) => {
+                            if (value != this.specialColorId) {
+                                let item = center.getChildByName('' + index);
+                                let tip = item.getChildByName('tip');
+                                tip.active = true;
+                                tip.color = cc.color(255, 0, 0);
+                                tip.getComponent(cc.Sprite).fillStart = item.getComponent(cc.Sprite).fillStart;
+                                tip.getComponent(cc.Sprite).fillRange = item.getComponent(cc.Sprite).fillRange;
+                                tip.getComponent(cc.Animation).stop();
+                                tip.getComponent(cc.Animation).play();
+                            }
+                        });
+                        this.scheduleOnce(() => {
+                            syncData.customSyncData.colorCell.forEach((value, index) => {
+                                if (value != this.specialColorId) {
+                                    let item = center.getChildByName('' + index);
+                                    item.getChildByName('tip').active = false;
+                                }
+                            });
+                            UIHelp.closeMask();
+                        }, 1.0);
+                    }
+                }
+            }
+        });
+
+        T2M.addSyncEventListener(EventType.event_touch_start, (msg: any) => {
+            let gameData = EditorManager.editorData.GameData;
+            let syncData = SyncDataManager.syncData;
+            let data = gameData[syncData.customSyncData.curLevel];
+
+            this.stopHint();
+            this.stopGuide();
+
+            let info: { custom: string, touchId: number } = msg;
+            if (info.custom == 'start') {
+                SoundManager.playEffect("click", false);
+            }
+            else if (info.custom == 'move') {
+                SoundManager.playEffect("drag", false);
+            }
+
+            if (syncData.customSyncData.brushId == syncData.customSyncData.colorCell[info.touchId]) {
+                syncData.customSyncData.colorCell[info.touchId] = this.specialColorId;
+            }
+            else {
+                syncData.customSyncData.colorCell[info.touchId] = syncData.customSyncData.brushId;
+            }
+
+            if (data.gameModel == GameModel.square) {
+                this.initSquareLeft();
+            }
+            else if (data.gameModel == GameModel.cycle) {
+                this.initCycleLeft();
             }
         });
     }
 
     public initData() {
-        this._gameNode.on(cc.Node.EventType.TOUCH_START, this.touchStart, this);
-        this._gameNode.on(cc.Node.EventType.TOUCH_MOVE, this.touchMove, this);
-        this._gameNode.on(cc.Node.EventType.TOUCH_END, this.touchEnd, this);
-        this._gameNode.on(cc.Node.EventType.TOUCH_CANCEL, this.touchEnd, this);
         /** 缓存节点 */
         for (let index = 0; index < this.objPool.cell.max; index++) {
             if (this.objPool.cell.pool.size() < this.objPool.cell.max) {
@@ -165,73 +256,123 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         }
     }
 
-    public initGame() {
-        this._laba.getComponent(cc.Animation).play("stop");
-        this._lb_curLevel.getComponent(cc.Label).string = (SyncDataManager.syncData.customSyncData.curLevel + 1).toString();
-        this._lb_levelCount.getComponent(cc.Label).string = EditorManager.editorData.GameData.length.toString();
+    public initDataSync() {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
 
-        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+        syncData.customSyncData.brushId = this.initColorId;
         if (data.gameModel == GameModel.square) {
-            this._shapeF.active = true;
-            this._shapeY.active = false;
-            this.initSquareCell();
-            this.initSquareSign();
-            this.initSquareQues();
+            for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
+                let cellData = data.squareObj.allCellData[index];
+                if (cellData.state == CellState.show) {
+                    syncData.customSyncData.colorCell[index] = this.specialColorId;
+                }
+            }
         }
         else if (data.gameModel == GameModel.cycle) {
-            this._shapeF.active = false;
-            this._shapeY.active = true;
-            this.initCycle();
-        }
-    }
-
-    /** 刷新方块 */
-    public initSquareCell() {
-        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        let obj = data.squareObj;
-        let left = this._shapeF.getChildByName('left');
-        let center = left.getChildByName('center');
-        center.width = CellW * obj.col + SpaceX * (obj.col - 1);
-        center.height = CellH * obj.row + SpaceY * (obj.row - 1);
-        let layoutCenter = center.getComponent(cc.Layout);
-        layoutCenter.spacingX = SpaceX;
-        layoutCenter.spacingY = SpaceY;
-        center.children.forEach((cellItem) => { cellItem.active = false; });
-        for (let i = 0; i < obj.row; i++) {
-            for (let j = 0; j < obj.col; j++) {
-                let index = i * obj.col + j;
-                let cellName = '' + index;
-                let cellItem = center.getChildByName(cellName);
-                if (!cellItem) {
-                    cellItem = this.poolGet(this._cellItem, this.objPool.cell);
-                    cellItem.name = cellName;
-                    cellItem.parent = center;
-                }
-                // 数字
-                cellItem.active = true;
-                let cellData = obj.allCellData[index];
-                cellItem.opacity = cellData.state == CellState.show ? 255 : 0;
-                if (cellItem.opacity > 0) {
-                    let label = cellItem.getChildByName('label');
-                    label.active = true;
-                    label.getComponent(cc.Label).string = cellData.chars;
-                }
+            for (let index = 0; index < data.cycleObj.cutNum; index++) {
+                syncData.customSyncData.colorCell[index] = this.specialColorId;
             }
         }
     }
 
-    /** 刷新行列标注 */
-    public initSquareSign() {
-        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
+    public initGame() {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        this._laba.getComponent(cc.Animation).play("stop");
+        this._lb_curLevel.getComponent(cc.Label).string = (syncData.customSyncData.curLevel + 1).toString();
+        this._lb_levelCount.getComponent(cc.Label).string = gameData.length.toString();
+        this._bg.children.forEach((item) => {
+            if (data.gameModel == GameModel.square) {
+                item.active = item.name == '0';
+            }
+            else {
+                item.active = item.name == '1';
+            }
+        });
+        if (data.gameModel == GameModel.square) {
+            this._shapeF.active = true;
+            this._shapeY.active = false;
+            this._btnSubmit.active = data.squareObj.isScore;
+            this.initSquareLeft();
+            this.initSquareRight();
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            this._shapeF.active = false;
+            this._shapeY.active = true;
+            this._btnSubmit.active = data.cycleObj.isScore;
+            this.initCycleLeft();
+            this.initCycleRight();
+        }
+
+        if (!syncData.frameSyncData.isGameStart) {
+            // if (syncData.frameSyncData.isGameOver) {
+            //     this.gameOver();
+            // }
+            // else {
+            //     if (data.auto_play_title && syncData.customSyncData.playTitle) {
+            //         this.playTitleAudio();
+            //     }
+            //     else {
+            //         this.scheduleOnce(this.showGuide, 0.5);
+            //     }
+            // }
+            this.scheduleOnce(this.showGuide, 0.5);
+        }
+    }
+
+    /** 刷新方块 */
+    public initSquareLeft() {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        let width = CellW * data.squareObj.col + SpaceX * (data.squareObj.col - 1);
+        let height = CellH * data.squareObj.row + SpaceY * (data.squareObj.row - 1);
+
         let left = this._shapeF.getChildByName('left');
+        // 设置 cell
+        let center = left.getChildByName('center');
+        center.setContentSize(width, height);
+        let layoutCenter = center.getComponent(cc.Layout);
+        layoutCenter.spacingX = SpaceX;
+        layoutCenter.spacingY = SpaceY;
+        center.children.forEach((item) => { item.active = false; });
+        for (let i = 0; i < data.squareObj.row; i++) {
+            for (let j = 0; j < data.squareObj.col; j++) {
+                let index = i * data.squareObj.col + j;
+                let cellName = '' + index;
+                let item = center.getChildByName(cellName);
+                if (!item) {
+                    item = this.poolGet(this._cellItem, this.objPool.cell);
+                    item.name = cellName;
+                    item.width = CellW;
+                    item.height = CellH;
+                    item.parent = center;
+                }
+                // 数字
+                item.active = true;
+                let cellData = data.squareObj.allCellData[index];
+                item.opacity = cellData.state == CellState.show ? 255 : 0;
+                if (item.opacity > 0) {
+                    let brushId = syncData.customSyncData.colorCell[index];
+                    let back = item.getChildByName('back');
+                    back.color = this.brushColors[brushId].back;
+                    let label = item.getChildByName('label');
+                    label.active = true;
+                    label.color = this.brushColors[brushId].label;
+                    label.getComponent(cc.Label).string = cellData.chars;
+                }
+            }
+        }
+        // 设置 sign
         let row = left.getChildByName('row');
         let col = left.getChildByName('col');
         if (data.squareObj.isSign) {
-            let width = CellW * data.squareObj.col + SpaceX * (data.squareObj.col - 1);
-            let height = CellH * data.squareObj.row + SpaceY * (data.squareObj.row - 1);
             row.active = true;
             row.x = -(width + CellW) * 0.5 - SpaceX;
-            row.y = height * 0.5;
+            row.y = -height * 0.5;
             row.height = height;
             row.getComponent(cc.Layout).spacingY = SpaceY;
             row.children.forEach((item) => { item.active = false; });
@@ -240,6 +381,8 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
                 if (!item) {
                     item = this.poolGet(this._cellLabel, this.objPool.label);
                     item.name = '' + index;
+                    item.width = CellW;
+                    item.height = CellH;
                     item.parent = row;
                 }
                 item.active = true;
@@ -269,42 +412,44 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         }
     }
 
-    public initSquareQues(){
+    public initSquareRight() {
+        let syncData = SyncDataManager.syncData;
         let right = this._shapeF.getChildByName('right');
-
+        let answers = right.getChildByName('answer');
+        answers.children.forEach((item) => {
+            let isSelect = syncData.customSyncData.brushId == Number(item.name);
+            item.scale = isSelect ? 1.1 : 1.0;
+            item.getChildByName('select').active = isSelect;
+        });
     }
 
     /** 刷新圆形 */
-    public initCycle() {
-        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        let obj = data.cycleObj;
+    public initCycleLeft() {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
         let fillStart = 0;
-        let fillRange = 0;
-        let fillDis = Math.round(1000 / obj.cutNum) / 1000;
-        let left = this._shapeF.getChildByName('left');
-        let cycle = left.getChildByName('cycle');
-        for (let index = 0; index < cycle.childrenCount; index++) {
-            let item = cycle.getChildByName('item' + index);
-            item.active = index < obj.cutNum;
+        let fillDis = Math.round(1000 / data.cycleObj.cutNum) / 1000;
+        let left = this._shapeY.getChildByName('left');
+        let center = left.getChildByName('center');
+        for (let index = 0; index < center.childrenCount; index++) {
+            let item = center.getChildByName('' + index);
+            item.active = index < data.cycleObj.cutNum;
             if (!item.active) {
                 continue;
             }
             fillStart = fillDis * index;
-            if (index == obj.cutNum - 1) {
-                fillRange = 1;
-            }
-            else {
-                fillRange = fillDis * (index + 1);
-            }
             item.getComponent(cc.Sprite).fillStart = fillStart;
-            item.getComponent(cc.Sprite).fillRange = fillRange;
+            item.getComponent(cc.Sprite).fillRange = fillDis;
+            let brushId = syncData.customSyncData.colorCell[index];
+            item.color = this.brushColors[brushId].back;
         }
         // 线
         let angleDis = fillDis * 360;
         let line = left.getChildByName('line');
         for (let index = 0; index < line.childrenCount; index++) {
-            let item = line.getChildByName('item' + index);
-            item.active = index < obj.cutNum;
+            let item = line.getChildByName('' + index);
+            item.active = index < data.cycleObj.cutNum;
             if (!item.active) {
                 continue;
             }
@@ -312,47 +457,397 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
         }
     }
 
-    private touchStart(event: cc.Event.EventTouch) {
-        this.objTouch.isClick = true;
-        this.objTouch.pStart = cc.v3(event.getLocationX(), event.getLocationY());
+    public initCycleRight() {
+        let syncData = SyncDataManager.syncData;
+        let right = this._shapeY.getChildByName('right');
+        let answers = right.getChildByName('answer');
+        answers.children.forEach((item) => {
+            let isSelect = syncData.customSyncData.brushId == Number(item.name);
+            item.scale = isSelect ? 1.1 : 1.0;
+            item.getChildByName('select').active = isSelect;
+        });
     }
 
-    private touchMove(event: cc.Event.EventTouch) {
-        let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        // 移动事件 打断点击
-        if (this.objTouch.isClick) {
-            if (Math.abs(event.getDeltaX()) + Math.abs(event.getDeltaY()) > 2) {
-                this.objTouch.isClick = false;
+    public eventButton(event: cc.Event.EventTouch, custom: string) {
+        if (custom == 'brush') {
+            let item: cc.Node = event.target.parent;
+            let obj = {
+                custom: custom,
+                brushId: Number(item.name),
+            };
+            T2M.dispatch(EventType.event_touch_click, obj, true);
+        }
+        else if (custom == 'submit') {
+            let obj = {
+                custom: custom,
+            };
+            T2M.dispatch(EventType.event_touch_click, obj, true);
+        }
+    }
+
+    public touchStart(event: cc.Event.EventTouch) {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        if (data.gameModel == GameModel.square) {
+            let left = this._shapeF.getChildByName('left');
+            let center = left.getChildByName('center');
+            let pos = center.convertToNodeSpaceAR(event.getLocation());
+            for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
+                const cellData = data.squareObj.allCellData[index];
+                if (cellData.state != CellState.show) {
+                    continue;
+                }
+                let item = center.getChildByName('' + index);
+                if (item.getBoundingBox().contains(pos)) {
+                    let obj = {
+                        custom: 'start',
+                        touchId: Number(item.name),
+                    };
+                    this.objTouch.touchId = obj.touchId;
+                    T2M.dispatch(EventType.event_touch_start, obj, true);
+                    break;
+                }
             }
         }
-        // let isRefreshUI = false;
-        // data.squareObj.allCellData.forEach((cellData, index) => {
-        //     let item = center.getChildByName('' + index);
-        //     if (cc.Intersection.rectRect(cc.rect(x, y, w, h), item.getBoundingBox())) {
-        //         if (cellData.state == CellState.hide) {
-        //             cellData.state = CellState.hideChose;
-        //             isRefreshUI = true;
-        //         }
-        //         else if (cellData.state == CellState.show) {
-        //             cellData.state = CellState.showChose;
-        //             isRefreshUI = true;
-        //         }
-        //     }
-        // });
-        // isRefreshUI && this.initLeft();
+        else if (data.gameModel == GameModel.cycle) {
+            let left = this._shapeY.getChildByName('left');
+            let center = left.getChildByName('center');
+            let pos = center.convertToNodeSpaceAR(event.getLocation());
+            let radius = center.getChildByName('0').width * 0.5;
+            let distance = MathUtils.getInstance().getDistance(cc.v3(pos.x, pos.y), cc.v3(0, 0));
+            if (distance > radius) {
+                return;
+            }
+            let disA = Math.round(360 / data.cycleObj.cutNum);
+            let angle = -MathUtils.getInstance().getTwoPointsRadian2(cc.v3(0, 0), cc.v3(pos.x, pos.y)) + 90;
+            angle = (angle + 360) % 360;
+            let touchId = Math.floor(angle / disA);
+            if (touchId > data.cycleObj.cutNum) {
+                touchId = data.cycleObj.cutNum;
+            }
+            let obj = {
+                custom: 'start',
+                touchId: touchId,
+            };
+            this.objTouch.touchId = obj.touchId;
+            T2M.dispatch(EventType.event_touch_start, obj, true);
+        }
     }
 
-    private touchEnd(event: cc.Event.EventTouch) {
-        // let data = EditorManager.editorData.GameData[EditorManager.editorData.curLevel];
-        // let center = this.l_shapeF.getChildByName('center');
-        // // 点击事件触发
-        // if (this.objTouch.isClick) {
+    public touchMove(event: cc.Event.EventTouch) {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        if (data.gameModel == GameModel.square) {
+            let left = this._shapeF.getChildByName('left');
+            let center = left.getChildByName('center');
+            let pos = center.convertToNodeSpaceAR(event.getLocation());
+            if (this.objTouch.touchId >= 0) {
+                let item = center.getChildByName('' + this.objTouch.touchId);
+                if (item && item.getBoundingBox().contains(pos)) {
+                    return;
+                }
+            }
+            for (let index = 0, length = data.squareObj.allCellData.length; index < length; index++) {
+                const cellData = data.squareObj.allCellData[index];
+                if (cellData.state != CellState.show) {
+                    continue;
+                }
+                let item = center.getChildByName('' + index);
+                if (item.getBoundingBox().contains(pos)) {
+                    let obj = {
+                        custom: 'move',
+                        touchId: Number(item.name),
+                    };
+                    this.objTouch.touchId = obj.touchId;
+                    T2M.dispatch(EventType.event_touch_start, obj, true);
+                    break;
+                }
+            }
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            let left = this._shapeY.getChildByName('left');
+            let center = left.getChildByName('center');
+            let pos = center.convertToNodeSpaceAR(event.getLocation());
+            let radius = center.getChildByName('0').width * 0.5;
+            let distance = MathUtils.getInstance().getDistance(cc.v3(pos.x, pos.y), cc.v3(0, 0));
+            if (distance > radius) {
+                return;
+            }
+            let disA = Math.round(360 / data.cycleObj.cutNum);
+            let angle = -MathUtils.getInstance().getTwoPointsRadian2(cc.v3(0, 0), cc.v3(pos.x, pos.y)) + 90;
+            angle = (angle + 360) % 360;
+            let touchId = Math.floor(angle / disA);
+            if (touchId > data.cycleObj.cutNum) {
+                touchId = data.cycleObj.cutNum;
+            }
+            if (touchId != this.objTouch.touchId) {
+                let obj = {
+                    custom: 'move',
+                    touchId: touchId,
+                };
+                this.objTouch.touchId = obj.touchId;
+                T2M.dispatch(EventType.event_touch_start, obj, true);
+            }
+        }
+    }
 
-        // }
+    public touchEnd(event: cc.Event.EventTouch) {
+        this.objTouch.touchId = -1;
+    }
+
+    public getQuesResult(): { ques: Number, answer: Number } {
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        let result = { ques: 0, answer: 0 };
+        if (data.gameModel == GameModel.square) {
+            result.ques = data.squareObj.score;
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            result.ques = data.cycleObj.score;
+        }
+        for (let i = 0; i < syncData.customSyncData.colorCell.length; i++) {
+            if (syncData.customSyncData.colorCell[i] != this.specialColorId) {
+                result.answer++;
+            }
+        }
+        return result;
+    }
+
+    public playTitleAudio() {
+        SoundManager.stopAllAudio();
+        let syncData = SyncDataManager.syncData;
+        syncData.customSyncData.playTitle = false;
+        this.isTitlePlaying = true;
+        this._laba.getComponent(cc.Animation).play("play");
+        let audioName1 = "v_zzq_d8_010";
+        let audioName2 = "v_zzq_d8_010";
+        SoundManager.playAudio(audioName1, false, true, false, () => {
+            if (!this.isTitlePlaying) {
+                return;
+            }
+            SoundManager.playAudio(audioName2, false, true, false, () => {
+                this._laba.getComponent(cc.Animation).play("stop");
+                this.isTitlePlaying = false;
+                this.scheduleOnce(this.showGuide, 0.5);
+            }, true, this);
+        }, true, this);
+    }
+
+    /**
+     * 引导 显示
+     * 1.分数设置才有引导
+     */
+    public showGuide() {
+        console.log('引导 显示');
+        let gameData = EditorManager.editorData.GameData;
+        let syncData = SyncDataManager.syncData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        if (data.gameModel == GameModel.square) {
+            if (data.squareObj.isScore) {
+                syncData.customSyncData.playGuide = true;
+            }
+            else {
+                syncData.customSyncData.playGuide = false;
+            }
+            let left = this._shapeF.getChildByName('left');
+            let back = left.getChildByName('back');
+            back.active = syncData.customSyncData.playGuide;
+            if (syncData.customSyncData.playGuide) {
+                let width = CellW * data.squareObj.col + SpaceX * (data.squareObj.col - 1);
+                let height = CellH * data.squareObj.row + SpaceY * (data.squareObj.row - 1);
+                back.active = true;
+                back.color = cc.color(0, 255, 0);
+                back.setContentSize(width + 10, height + 10);
+                back.getComponent(cc.Animation).stop();
+                back.getComponent(cc.Animation).play();
+            }
+            else {
+                back.active = false;
+            }
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            if (data.cycleObj.isScore) {
+                syncData.customSyncData.playGuide = true;
+            }
+            else {
+                syncData.customSyncData.playGuide = false;
+            }
+            let left = this._shapeY.getChildByName('left');
+            let back = left.getChildByName('back');
+            if (syncData.customSyncData.playGuide) {
+                let width = CellW * data.squareObj.col + SpaceX * (data.squareObj.col - 1);
+                let height = CellH * data.squareObj.row + SpaceY * (data.squareObj.row - 1);
+                back.active = true;
+                back.color = cc.color(0, 255, 0);
+                back.setContentSize(width, height);
+                back.getComponent(cc.Animation).stop();
+                back.getComponent(cc.Animation).play();
+            }
+            else {
+                back.active = false;
+            }
+        }
+    }
+
+    /** 引导 停止 */
+    public stopGuide() {
+        console.log('引导 停止');
+        let syncData = SyncDataManager.syncData;
+        syncData.customSyncData.playGuide = false;
+
+        let gameData = EditorManager.editorData.GameData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        if (data.gameModel == GameModel.square) {
+            let left = this._shapeF.getChildByName('left');
+            let back = left.getChildByName('back');
+            back.getComponent(cc.Animation).stop();
+            back.active = false
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            let left = this._shapeY.getChildByName('left');
+            let back = left.getChildByName('back');
+            back.getComponent(cc.Animation).stop();
+            back.active = false
+        }
+    }
+
+    /** 10s提示 提示 */
+    public showHint() {
+        console.log('10s提示 显示');
+        let syncData = SyncDataManager.syncData;
+        syncData.customSyncData.isHint = true;
+
+        let gameData = EditorManager.editorData.GameData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        if (data.gameModel == GameModel.square) {
+            let result = this.getQuesResult();
+            if (result.ques == result.answer) {
+                syncData.customSyncData.isHint = false;
+                return;
+            }
+            let left = this._shapeF.getChildByName('left');
+            let center = left.getChildByName('center');
+            // 色块不足
+            if (result.ques > result.answer) {
+                let id = -1;
+                for (let i = data.squareObj.row - 1; i >= 0; i--) {
+                    for (let j = 0; j < data.squareObj.col; j++) {
+                        let index = i * data.squareObj.col + j;
+                        if (syncData.customSyncData.colorCell[index] == this.specialColorId) {
+                            id = index;
+                            break;
+                        }
+                    }
+                    if (id >= 0) {
+                        break;
+                    }
+                }
+                let item = center.getChildByName('' + id);
+                let tip = item.getChildByName('tip');
+                tip.active = true;
+                tip.color = cc.color(0, 255, 0);
+                tip.getComponent(cc.Animation).stop();
+                tip.getComponent(cc.Animation).play();
+            }
+            // 色块过多
+            else if (result.ques < result.answer) {
+                let id = -1;
+                for (let i = data.squareObj.row - 1; i >= 0; i--) {
+                    for (let j = 0; j < data.squareObj.col; j++) {
+                        let index = i * data.squareObj.col + j;
+                        if (syncData.customSyncData.colorCell[index] != this.specialColorId) {
+                            id = index;
+                            break;
+                        }
+                    }
+                    if (id >= 0) {
+                        break;
+                    }
+                }
+                let item = center.getChildByName('' + id);
+                let tip = item.getChildByName('tip');
+                tip.active = true;
+                tip.color = cc.color(255, 0, 0);
+                tip.getComponent(cc.Animation).stop();
+                tip.getComponent(cc.Animation).play();
+            }
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            let result = this.getQuesResult();
+            if (result.ques == result.answer) {
+                syncData.customSyncData.isHint = false;
+                return;
+            }
+            let left = this._shapeY.getChildByName('left');
+            let center = left.getChildByName('center');
+            // 色块不足
+            if (result.ques > result.answer) {
+                let id = -1;
+                for (let i = 0, length = syncData.customSyncData.colorCell.length; i < length; i++) {
+                    if (syncData.customSyncData.colorCell[i] == this.specialColorId) {
+                        id = i;
+                        break;
+                    }
+                }
+                let item = center.getChildByName('' + id);
+                let tip = left.getChildByName('tip');
+                tip.active = true;
+                tip.color = cc.color(0, 255, 0);
+                tip.getComponent(cc.Sprite).fillStart = item.getComponent(cc.Sprite).fillStart;
+                tip.getComponent(cc.Sprite).fillRange = item.getComponent(cc.Sprite).fillRange;
+                tip.getComponent(cc.Animation).stop();
+                tip.getComponent(cc.Animation).play();
+            }
+            // 色块过多
+            else if (result.ques < result.answer) {
+                let id = -1;
+                for (let i = 0, length = syncData.customSyncData.colorCell.length; i < length; i++) {
+                    if (syncData.customSyncData.colorCell[i] != this.specialColorId) {
+                        id = i;
+                        break;
+                    }
+                }
+                let item = center.getChildByName('' + id);
+                let tip = left.getChildByName('tip');
+                tip.active = true;
+                tip.color = cc.color(255, 0, 0);
+                tip.getComponent(cc.Sprite).fillStart = item.getComponent(cc.Sprite).fillStart;
+                tip.getComponent(cc.Sprite).fillRange = item.getComponent(cc.Sprite).fillRange;
+                tip.getComponent(cc.Animation).stop();
+                tip.getComponent(cc.Animation).play();
+            }
+        }
+    }
+
+    /** 10s提示 停止 */
+    public stopHint() {
+        console.log('10s提示 停止');
+        let syncData = SyncDataManager.syncData;
+        syncData.customSyncData.isHint = false;
+        syncData.customSyncData.time = 10;
+
+        let gameData = EditorManager.editorData.GameData;
+        let data = gameData[syncData.customSyncData.curLevel];
+        if (data.gameModel == GameModel.square) {
+            let left = this._shapeF.getChildByName('left');
+            let center = left.getChildByName('center');
+            center.children.forEach((item) => {
+                item.getChildByName('tip').active = false;
+            });
+        }
+        else if (data.gameModel == GameModel.cycle) {
+            let left = this._shapeY.getChildByName('left');
+            left.getChildByName('tip').active = false
+        }
     }
 
     protected onGameStart(): void {
         super.onGameStart();
+        this.initGame();
+        console.log('游戏 开始');
     }
 
     /**
@@ -387,6 +882,7 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
      */
     protected gameOver() {
         super.gameOver();
+        console.log('游戏 结束');
     }
 
     /**
@@ -394,10 +890,32 @@ export default class GamePanel_24_l1sc_d3_01 extends BaseGamePanel_24_l1sc_d3_01
      */
     protected onReplay() {
         super.onReplay();
+
+        this.isTitlePlaying = false;
+        SyncDataManager.syncData.customSyncData.playGuide = false;
+
+        this.initData();
+        this.initDataSync();
+        this.initGame();
+        console.log('游戏 重玩');
     }
 
     update(dt) {
         super.update(dt);
+        let syncData = SyncDataManager.syncData;
+        let frameData = syncData.frameSyncData;
+        if (frameData.isGameOver || frameData.isGameStart) {
+            return;
+        }
+        let costomData = syncData.customSyncData;
+        if (costomData.playGuide || costomData.time == -1) {
+            return;
+        }
+        costomData.time -= dt;
+        if (costomData.time < 0) {
+            costomData.time = -1
+            this.showHint();
+        }
     }
 
     /** 获取 父节点上的当前坐标 在 目标节点上的 相对坐标 */
